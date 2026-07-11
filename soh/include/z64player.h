@@ -953,6 +953,10 @@ typedef struct Player {
     /*        */ u8 boomerangQuickRecall; // Has the player pressed the boomerang button while it's in the air still?
     /*        */ u8 ivanDamageMultiplier;
     // #endregion
-} Player; // size = 0xA94
+    // #region SOH [Sekiro Combat]
+    /*        */ u8 deflectTimer;
+    // #endregion
+
+} Player; 
 
 #endif

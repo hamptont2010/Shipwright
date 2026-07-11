@@ -2750,6 +2750,8 @@ s32 func_80834758(PlayState* play, Player* this) {
         LinkAnimation_Change(play, &this->upperSkelAnime, anim, 1.0f, frame, frame, ANIMMODE_ONCE, 0.0f);
         Player_PlaySfx(this, NA_SE_IT_SHIELD_POSTURE);
 
+        this->deflectTimer = 6;
+
         return 1;
     } else {
         return 0;
@@ -2838,6 +2840,10 @@ s32 Player_UpperAction_ChangeHeldItem(Player* this, PlayState* play) {
 }
 
 s32 func_80834B5C(Player* this, PlayState* play) {
+    if (this->deflectTimer > 0) {
+        this->deflectTimer--;
+    }
+
     LinkAnimation_Update(play, &this->upperSkelAnime);
 
     if (!CHECK_BTN_ALL(sControlInput->cur.button, BTN_R)) {
@@ -4821,10 +4827,16 @@ s32 func_808382DC(Player* this, PlayState* play) {
                     }
 
                     if (!(this->stateFlags1 & (PLAYER_STATE1_HANGING_OFF_LEDGE | PLAYER_STATE1_CLIMBING_LEDGE |
-                                               PLAYER_STATE1_CLIMBING_LADDER))) {
-                        this->linearVelocity = 0.0f;
-                        this->yaw = this->actor.shape.rot.y;
-                    }
+                                                PLAYER_STATE1_CLIMBING_LADDER))) {
+                            if (this->deflectTimer > 0) {
+                                this->linearVelocity = 0.0f;
+                                Player_PlaySfx(this, NA_SE_IT_SHIELD_REFLECT_SW);
+                            } else {
+                                this->linearVelocity = -18.0f;
+                            }
+
+                            this->yaw = this->actor.shape.rot.y;
+                        }
                 }
 
                 if (sp64 && (this->shieldQuad.info.acHitInfo->toucher.effect == 1)) {
