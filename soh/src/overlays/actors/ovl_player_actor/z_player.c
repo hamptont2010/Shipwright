@@ -4822,7 +4822,7 @@ s32 func_808382DC(Player* this, PlayState* play) {
 
                     if (!(this->stateFlags1 & (PLAYER_STATE1_HANGING_OFF_LEDGE | PLAYER_STATE1_CLIMBING_LEDGE |
                                                PLAYER_STATE1_CLIMBING_LADDER))) {
-                        this->linearVelocity = -18.0f;
+                        this->linearVelocity = 0.0f;
                         this->yaw = this->actor.shape.rot.y;
                     }
                 }
