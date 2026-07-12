@@ -1315,6 +1315,17 @@ void EnTest_SetupStunned(EnTest* this) {
     EnTest_SetupAction(this, EnTest_Stunned);
 }
 
+void EnTest_ApplyPostureBreak(EnTest* enTest) {
+    if (enTest == NULL || enTest->actor.colChkInfo.health == 0) {
+        return;
+    }
+
+    enTest->swordCollider.base.atFlags &= ~(AT_HIT | AT_BOUNCED);
+    enTest->lastDamageEffect = STALFOS_DMGEFF_STUN;
+
+    EnTest_SetupStunned(enTest);
+}
+
 void EnTest_Stunned(EnTest* this, PlayState* play) {
     Player* player = GET_PLAYER(play);
 

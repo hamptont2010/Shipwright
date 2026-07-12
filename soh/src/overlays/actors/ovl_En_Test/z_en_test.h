@@ -111,4 +111,6 @@ typedef enum {
     /* 5 */ STALFOS_TYPE_5
 } StalfosType;
 
+void EnTest_ApplyPostureBreak(EnTest* enTest);
+
 #endif
