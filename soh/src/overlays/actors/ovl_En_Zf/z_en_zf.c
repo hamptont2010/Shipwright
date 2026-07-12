@@ -14,6 +14,8 @@
 void EnZf_Init(Actor* thisx, PlayState* play);
 void EnZf_Destroy(Actor* thisx, PlayState* play);
 void EnZf_Update(Actor* thisx, PlayState* play);
+void EnZf_SetupStunned(EnZf* this);
+void EnZf_Stunned(EnZf* this, PlayState* play);
 void EnZf_Draw(Actor* thisx, PlayState* play);
 void EnZf_Reset(void);
 
@@ -35,7 +37,6 @@ void EnZf_Slash(EnZf* this, PlayState* play);
 void EnZf_RecoilFromBlockedSlash(EnZf* this, PlayState* play);
 void EnZf_SetupJumpBack(EnZf* this);
 void EnZf_JumpBack(EnZf* this, PlayState* play);
-void EnZf_Stunned(EnZf* this, PlayState* play);
 void EnZf_SetupSheatheSword(EnZf* this, PlayState* play);
 void EnZf_SheatheSword(EnZf* this, PlayState* play);
 void EnZf_HopAndTaunt(EnZf* this, PlayState* play);
@@ -353,6 +354,22 @@ void EnZf_Init(Actor* thisx, PlayState* play) {
             Actor_Kill(thisx);
         }
     }
+}
+
+void EnZf_ApplyPostureBreak(EnZf* enZf) {
+    if (enZf->actor.colChkInfo.health <= 0) {
+        return;
+    }
+
+    enZf->swordCollider.base.atFlags &= ~AT_BOUNCED;
+    enZf->swordCollider.base.acFlags &= ~AC_HIT;
+    enZf->bodyCollider.base.acFlags &= ~AC_HIT;
+
+    enZf->damageEffect = ENZF_DMGEFF_STUN;
+
+    Actor_SetColorFilter(&enZf->actor, 0, 120, 0, 80);
+
+    EnZf_SetupStunned(enZf);
 }
 
 void EnZf_Destroy(Actor* thisx, PlayState* play) {

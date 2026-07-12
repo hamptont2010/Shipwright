@@ -121,4 +121,6 @@ typedef struct EnZf {
     /* 0x04FC */ Vec3f bodyPartsPos[9];
 } EnZf; // size = 0x0568
 
+void EnZf_ApplyPostureBreak(EnZf* enZf);
+
 #endif
