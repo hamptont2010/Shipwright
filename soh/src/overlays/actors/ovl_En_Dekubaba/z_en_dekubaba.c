@@ -400,6 +400,19 @@ void EnDekubaba_SetupHit(EnDekubaba* this, s32 arg1) {
     this->actionFunc = EnDekubaba_Hit;
 }
 
+void EnDekubaba_ApplyPostureBreak(EnDekubaba* this) {
+    /**
+    *Audio_PlayActorSound2(&this->actor, NA_SE_SY_CORRECT_CHIME);
+    */
+    if (this->actor.colChkInfo.health == 0) {
+        return;
+    }
+
+    this->collider.base.atFlags &= ~AT_HIT;
+
+    EnDekubaba_SetupHit(this, 2);
+}
+
 void EnDekubaba_SetupPrunedSomersault(EnDekubaba* this) {
     this->timer = 0;
     this->skelAnime.playSpeed = 0.0f;

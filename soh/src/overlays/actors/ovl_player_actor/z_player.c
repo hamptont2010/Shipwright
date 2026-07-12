@@ -32,6 +32,8 @@
 #include "soh/OTRGlobals.h"
 #include "soh/ResourceManagerHelpers.h"
 
+#include "overlays/actors/ovl_En_Dekubaba/z_en_dekubaba.h"
+
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -4722,11 +4724,15 @@ s32 func_808382DC(Player* this, PlayState* play) {
     s32 pad;
     s32 sp68 = false;
     s32 sp64;
+    u8 postureThreshold;
+
 
     if ((this->brokenTarget != NULL) && (this->brokenTimer > 0)) {
-        this->brokenTarget->speedXZ = 0.0f;
-        this->brokenTarget->velocity.x = 0.0f;
-        this->brokenTarget->velocity.z = 0.0f;
+        if (this->brokenTarget->id != ACTOR_EN_DEKUBABA) {
+            this->brokenTarget->speedXZ = 0.0f;
+            this->brokenTarget->velocity.x = 0.0f;
+            this->brokenTarget->velocity.z = 0.0f;
+        }
 
         this->brokenTimer--;
 
@@ -4856,6 +4862,13 @@ s32 func_808382DC(Player* this, PlayState* play) {
 
                             if ((attacker != NULL) && (attacker->category == ACTORCAT_ENEMY)) {
                                 if (attacker->freezeTimer == 0) {
+
+                                    postureThreshold = 3;
+
+                                    if (attacker->id == ACTOR_EN_DEKUBABA) {
+                                        postureThreshold = 2;
+                                    }
+
                                     if (this->deflectTarget == attacker) {
                                         this->deflectCount++;
                                     } else {
@@ -4863,11 +4876,15 @@ s32 func_808382DC(Player* this, PlayState* play) {
                                         this->deflectCount = 1;
                                     }
 
-                                    if (this->deflectCount >= 3) {
+                                    if (this->deflectCount >= postureThreshold) {
                                         this->brokenTarget = attacker;
                                         this->brokenTimer = 60;
 
-                                        Actor_SetColorFilter(attacker, 0x4000, 255, 0, 60);
+                                        if (attacker->id == ACTOR_EN_DEKUBABA) {
+                                            EnDekubaba_ApplyPostureBreak((EnDekubaba*)attacker);
+                                        } else {
+                                            Actor_SetColorFilter(attacker, 0x4000, 255, 0, 60);
+                                        }
 
                                         this->deflectTarget = NULL;
                                         this->deflectCount = 0;
