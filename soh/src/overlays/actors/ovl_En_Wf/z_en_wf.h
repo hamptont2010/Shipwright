@@ -88,4 +88,6 @@ typedef enum {
     /* 1 */ WOLFOS_WHITE
 } EnWfType;
 
+void EnWf_ApplyPostureBreak(EnWf* enWf);
+
 #endif

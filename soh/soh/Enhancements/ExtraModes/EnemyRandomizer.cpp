@@ -10,7 +10,10 @@
 #include "soh/SohGui/SohMenu.h"
 
 extern "C" {
+
 #include "src/overlays/actors/ovl_En_Zf/z_en_zf.h"
+#include "overlays/actors/ovl_En_Wf/z_en_wf.h"
+
 #include "src/code/z_sekiro_combat.h"
 #include <z64.h>
 #include "src/overlays/actors/ovl_Bg_Haka/z_bg_haka.h"
@@ -763,8 +766,8 @@ void RegisterEnemyRandomizer() {
                 actorCtx,
                 play,
                 actorEntry,
-                ACTOR_EN_ZF,
-                ENZF_TYPE_LIZALFOS_LONE
+                ACTOR_EN_WF,
+                WOLFOS_NORMAL
             );
 
             if (*actor == nullptr) {

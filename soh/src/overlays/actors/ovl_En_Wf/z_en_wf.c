@@ -33,6 +33,7 @@ void EnWf_Slash(EnWf* this, PlayState* play);
 void EnWf_RecoilFromBlockedSlash(EnWf* this, PlayState* play);
 void EnWf_SetupBackflipAway(EnWf* this);
 void EnWf_BackflipAway(EnWf* this, PlayState* play);
+void EnWf_SetupStunned(EnWf* this);
 void EnWf_Stunned(EnWf* this, PlayState* play);
 void EnWf_Damaged(EnWf* this, PlayState* play);
 void EnWf_SetupSomersaultAndAttack(EnWf* this);
@@ -870,6 +871,27 @@ void EnWf_BackflipAway(EnWf* this, PlayState* play) {
     }
 }
 
+void EnWf_ApplyPostureBreak(EnWf* enWf) {
+    if (enWf->actor.colChkInfo.health <= 0) {
+        return;
+    }
+
+    /* Prevent the deflected slash from overriding the stunned state. */
+    enWf->colliderSpheres.base.atFlags &= ~(AT_HIT | AT_BOUNCED);
+    enWf->slashStatus = 0;
+
+    /* Clear any pending incoming-hit state. */
+    enWf->colliderSpheres.base.acFlags &= ~(AC_HIT | AC_BOUNCED);
+    enWf->colliderCylinderBody.base.acFlags &= ~AC_HIT;
+    enWf->colliderCylinderTail.base.acFlags &= ~AC_HIT;
+
+    enWf->damageEffect = ENWF_DMGEFF_STUN;
+
+    Actor_SetColorFilter(&enWf->actor, 0, 120, 0, 80);
+
+    EnWf_SetupStunned(enWf);
+}
+
 void EnWf_SetupStunned(EnWf* this) {
     if (this->actor.bgCheckFlags & 1) {
         this->actor.speedXZ = 0.0f;
@@ -880,6 +902,7 @@ void EnWf_SetupStunned(EnWf* this) {
     this->action = WOLFOS_ACTION_STUNNED;
     EnWf_SetupAction(this, EnWf_Stunned);
 }
+
 
 void EnWf_Stunned(EnWf* this, PlayState* play) {
     if (this->actor.bgCheckFlags & 2) {
