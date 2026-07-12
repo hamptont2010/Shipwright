@@ -3023,6 +3023,17 @@ void CollisionCheck_ApplyDamage(PlayState* play, CollisionCheckContext* colChkCt
         damage = tbl->table[i] & 0xF;
         collider->actor->colChkInfo.damageEffect = tbl->table[i] >> 4 & 0xF;
     }
+
+    Player* player = GET_PLAYER(play);
+
+    if ((player->brokenTarget == collider->actor) &&
+        (info->acHitInfo->toucher.dmgFlags != 0)) {
+        damage *= 4.0f;
+
+        player->brokenTarget = NULL;
+        player->brokenTimer = 0;
+    }
+
     if (!(collider->acFlags & AC_HARD)) {
         collider->actor->colChkInfo.damage += damage;
     }

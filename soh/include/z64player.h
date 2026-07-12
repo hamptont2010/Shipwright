@@ -955,8 +955,10 @@ typedef struct Player {
     // #endregion
     // #region SOH [Sekiro Combat]
     /*        */ Actor* deflectTarget;
+    /*        */ Actor* brokenTarget;
     /*        */ u8 deflectCount;
     /*        */ u8 deflectTimer;
+    /*        */ u8 brokenTimer;
     // #endregion
 
 } Player; 

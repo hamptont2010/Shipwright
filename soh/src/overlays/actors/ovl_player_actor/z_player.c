@@ -4723,6 +4723,18 @@ s32 func_808382DC(Player* this, PlayState* play) {
     s32 sp68 = false;
     s32 sp64;
 
+    if ((this->brokenTarget != NULL) && (this->brokenTimer > 0)) {
+        this->brokenTarget->speedXZ = 0.0f;
+        this->brokenTarget->velocity.x = 0.0f;
+        this->brokenTarget->velocity.z = 0.0f;
+
+        this->brokenTimer--;
+
+        if (this->brokenTimer == 0) {
+            this->brokenTarget = NULL;
+        }
+    }
+
     if (this->unk_A86 != 0) {
         if (!Player_InBlockingCsMode(play, this)) {
             Player_InflictDamageModified(play, -16 * (1 << CVarGetInteger(CVAR_ENHANCEMENT("VoidDamageMult"), 0)),
@@ -4843,19 +4855,25 @@ s32 func_808382DC(Player* this, PlayState* play) {
                             Player_PlaySfx(this, NA_SE_IT_SHIELD_REFLECT_SW);
 
                             if ((attacker != NULL) && (attacker->category == ACTORCAT_ENEMY)) {
-                                if (this->deflectTarget == attacker) {
-                                    this->deflectCount++;
-                                } else {
-                                    this->deflectTarget = attacker;
-                                    this->deflectCount = 1;
-                                }
+                                if (attacker->freezeTimer == 0) {
+                                    if (this->deflectTarget == attacker) {
+                                        this->deflectCount++;
+                                    } else {
+                                        this->deflectTarget = attacker;
+                                        this->deflectCount = 1;
+                                    }
 
-                                if (this->deflectCount == 1) {
-                                    Actor_SetColorFilter(attacker, 0, 255, 0, 10);
-                                } else if (this->deflectCount == 2) {
-                                    Actor_SetColorFilter(attacker, 0, 255, 0, 30);
-                                } else {
-                                    Actor_SetColorFilter(attacker, 0x4000, 255, 0, 60);
+                                    if (this->deflectCount >= 3) {
+                                        this->brokenTarget = attacker;
+                                        this->brokenTimer = 60;
+
+                                        Actor_SetColorFilter(attacker, 0x4000, 255, 0, 60);
+
+                                        this->deflectTarget = NULL;
+                                        this->deflectCount = 0;
+                                    } else {
+                                        Actor_SetColorFilter(attacker, 0, 255, 0, 20);
+                                    }
                                 }
                             }
                         } else {
@@ -10774,8 +10792,10 @@ void Player_InitCommon(Player* this, PlayState* play, FlexSkeletonHeader* skelHe
     this->ivanDamageMultiplier = 1;
 
     this->deflectTarget = NULL;
+    this->brokenTarget = NULL;
     this->deflectCount = 0;
     this->deflectTimer = 0;
+    this->brokenTimer = 0;
 }
 
 static void (*sStartModeFuncs[PLAYER_START_MODE_MAX])(PlayState* play, Player* this) = {
