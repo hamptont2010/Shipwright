@@ -32,7 +32,7 @@
 #include "soh/OTRGlobals.h"
 #include "soh/ResourceManagerHelpers.h"
 
-#include "overlays/actors/ovl_En_Dekubaba/z_en_dekubaba.h"
+#include "code/z_sekiro_combat.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -4863,11 +4863,7 @@ s32 func_808382DC(Player* this, PlayState* play) {
                             if ((attacker != NULL) && (attacker->category == ACTORCAT_ENEMY)) {
                                 if (attacker->freezeTimer == 0) {
 
-                                    postureThreshold = 3;
-
-                                    if (attacker->id == ACTOR_EN_DEKUBABA) {
-                                        postureThreshold = 2;
-                                    }
+                                    postureThreshold = Sekiro_GetPostureThreshold(attacker);
 
                                     if (this->deflectTarget == attacker) {
                                         this->deflectCount++;
@@ -4880,11 +4876,7 @@ s32 func_808382DC(Player* this, PlayState* play) {
                                         this->brokenTarget = attacker;
                                         this->brokenTimer = 60;
 
-                                        if (attacker->id == ACTOR_EN_DEKUBABA) {
-                                            EnDekubaba_ApplyPostureBreak((EnDekubaba*)attacker);
-                                        } else {
-                                            Actor_SetColorFilter(attacker, 0x4000, 255, 0, 60);
-                                        }
+                                        Sekiro_ApplyPostureBreak(attacker);
 
                                         this->deflectTarget = NULL;
                                         this->deflectCount = 0;
