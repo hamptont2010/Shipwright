@@ -4827,16 +4827,30 @@ s32 func_808382DC(Player* this, PlayState* play) {
                     }
 
                     if (!(this->stateFlags1 & (PLAYER_STATE1_HANGING_OFF_LEDGE | PLAYER_STATE1_CLIMBING_LEDGE |
-                                                PLAYER_STATE1_CLIMBING_LADDER))) {
-                            if (this->deflectTimer > 0) {
-                                this->linearVelocity = 0.0f;
-                                Player_PlaySfx(this, NA_SE_IT_SHIELD_REFLECT_SW);
-                            } else {
-                                this->linearVelocity = -18.0f;
-                            }
+                                            PLAYER_STATE1_CLIMBING_LADDER))) {
+                        if (this->deflectTimer > 0) {
+                            Actor* attacker = this->shieldQuad.base.ac;
+                            Vec3f deflectPos = {
+                                (f32)this->shieldQuad.info.bumper.hitPos.x,
+                                (f32)this->shieldQuad.info.bumper.hitPos.y,
+                                (f32)this->shieldQuad.info.bumper.hitPos.z,
+                            };
+                            
+                            this->linearVelocity = 0.0f;
 
-                            this->yaw = this->actor.shape.rot.y;
+                            CollisionCheck_SpawnShieldParticlesMetal(play, &deflectPos);
+                            CollisionCheck_SpawnShieldParticlesMetal(play, &deflectPos);
+                            Player_PlaySfx(this, NA_SE_IT_SHIELD_REFLECT_SW);
+
+                            if (attacker != NULL) {
+                                Actor_SetColorFilter(attacker, 0, 255, 0, 20);
+                            }
+                        } else {
+                            this->linearVelocity = -18.0f;
                         }
+
+                        this->yaw = this->actor.shape.rot.y;
+                    }
                 }
 
                 if (sp64 && (this->shieldQuad.info.acHitInfo->toucher.effect == 1)) {
