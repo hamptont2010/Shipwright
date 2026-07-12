@@ -2,6 +2,68 @@
 
 #include "overlays/actors/ovl_En_Dekubaba/z_en_dekubaba.h"
 
+extern int gMapLoading;
+
+Actor* Sekiro_SpawnEnemy(
+    ActorContext* actorCtx,
+    PlayState* play,
+    s16 actorId,
+    f32 posX,
+    f32 posY,
+    f32 posZ,
+    s16 rotX,
+    s16 rotY,
+    s16 rotZ,
+    s16 params
+) {
+    int previousMapLoading = gMapLoading;
+    Actor* actor;
+
+    gMapLoading = 0;
+
+    actor = Actor_Spawn(
+        actorCtx,
+        play,
+        actorId,
+        posX,
+        posY,
+        posZ,
+        rotX,
+        rotY,
+        rotZ,
+        params
+    );
+
+    gMapLoading = previousMapLoading;
+
+    return actor;
+}
+
+Actor* Sekiro_SpawnEnemyFromActorEntry(
+    ActorContext* actorCtx,
+    PlayState* play,
+    const ActorEntry* sourceEntry,
+    s16 actorId,
+    s16 params
+) {
+    if (sourceEntry == NULL) {
+        return NULL;
+    }
+
+    return Sekiro_SpawnEnemy(
+        actorCtx,
+        play,
+        actorId,
+        sourceEntry->pos.x,
+        sourceEntry->pos.y,
+        sourceEntry->pos.z,
+        0,
+        sourceEntry->rot.y,
+        0,
+        params
+    );
+}
+
 u8 Sekiro_GetPostureThreshold(Actor* enemy) {
     if (enemy == NULL) {
         return 3;

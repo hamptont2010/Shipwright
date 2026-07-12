@@ -1,0 +1,174 @@
+warning: in the working copy of 'soh/src/code/z_sekiro_combat.c', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'soh/src/code/z_sekiro_combat.h', CRLF will be replaced by LF the next time Git touches it
+[1mdiff --git a/soh/soh/Enhancements/ExtraModes/EnemyRandomizer.cpp b/soh/soh/Enhancements/ExtraModes/EnemyRandomizer.cpp[m
+[1mindex 458d066a7..f2053eb7e 100644[m
+[1m--- a/soh/soh/Enhancements/ExtraModes/EnemyRandomizer.cpp[m
+[1m+++ b/soh/soh/Enhancements/ExtraModes/EnemyRandomizer.cpp[m
+[36m@@ -10,6 +10,7 @@[m
+ #include "soh/SohGui/SohMenu.h"[m
+ [m
+ extern "C" {[m
+[32m+[m[32m#include "src/code/z_sekiro_combat.h"[m
+ #include <z64.h>[m
+ #include "src/overlays/actors/ovl_Bg_Haka/z_bg_haka.h"[m
+ #include "src/overlays/actors/ovl_Bg_Haka_Huta/z_bg_haka_huta.h"[m
+[36m@@ -23,6 +24,7 @@[m [mextern "C" {[m
+ #include "src/overlays/actors/ovl_En_Vali/z_en_vali.h"[m
+ [m
+ extern PlayState* gPlayState;[m
+[32m+[m[32mextern int gMapLoading;[m
+ }[m
+ [m
+ namespace SohGui {[m
+[36m@@ -742,6 +744,34 @@[m [mvoid RegisterEnemyRandomizer() {[m
+     // If Random Gerudo Fighters are defeated, drop some items[m
+     COND_ID_HOOK(OnEnemyDefeat, ACTOR_EN_GELDB, ENEMY_RANDOMIZER_ENABLED, OnGerudoFighterDefeat);[m
+ [m
+[32m+[m[32m    COND_VB_SHOULD(VB_SPAWN_ACTOR_ENTRY, true, {[m
+[32m+[m[32m        ActorContext* actorCtx = va_arg(args, ActorContext*);[m
+[32m+[m[32m        ActorEntry* actorEntry = va_arg(args, ActorEntry*);[m
+[32m+[m[32m        PlayState* play = va_arg(args, PlayState*);[m
+[32m+[m[32m        Actor** actor = va_arg(args, Actor**);[m
+[32m+[m
+[32m+[m[32m        if (play->sceneNum == SCENE_DEKU_TREE &&[m
+[32m+[m[32m            play->roomCtx.curRoom.num == 1 &&[m
+[32m+[m[32m            actorEntry->id == ACTOR_EN_HINTNUTS &&[m
+[32m+[m[32m            actorEntry->params == 6656) {[m
+[32m+[m
+[32m+[m[32m            *should = false;[m
+[32m+[m
+[32m+[m
+[32m+[m[32m            *actor = Sekiro_SpawnEnemyFromActorEntry([m
+[32m+[m[32m                actorCtx,[m
+[32m+[m[32m                play,[m
+[32m+[m[32m                actorEntry,[m
+[32m+[m[32m                ACTOR_EN_TEST,[m
+[32m+[m[32m                2[m
+[32m+[m[32m            );[m
+[32m+[m
+[32m+[m[32m            if (*actor == nullptr) {[m
+[32m+[m[32m                SPDLOG_ERROR("Sekiro: failed to spawn replacement actor.");[m
+[32m+[m[32m            }[m
+[32m+[m[32m        }[m
+[32m+[m[32m    });[m
+[32m+[m
+     COND_VB_SHOULD(VB_SPAWN_ACTOR_ENTRY, ENEMY_RANDOMIZER_ENABLED, {[m
+         ActorContext* actorCtx = va_arg(args, ActorContext*);[m
+         ActorEntry* actorEntry = va_arg(args, ActorEntry*);[m
+[1mdiff --git a/soh/src/code/z_sekiro_combat.c b/soh/src/code/z_sekiro_combat.c[m
+[1mindex f8d683e59..db1210d2a 100644[m
+[1m--- a/soh/src/code/z_sekiro_combat.c[m
+[1m+++ b/soh/src/code/z_sekiro_combat.c[m
+[36m@@ -2,6 +2,68 @@[m
+ [m
+ #include "overlays/actors/ovl_En_Dekubaba/z_en_dekubaba.h"[m
+ [m
+[32m+[m[32mextern int gMapLoading;[m
+[32m+[m
+[32m+[m[32mActor* Sekiro_SpawnEnemy([m
+[32m+[m[32m    ActorContext* actorCtx,[m
+[32m+[m[32m    PlayState* play,[m
+[32m+[m[32m    s16 actorId,[m
+[32m+[m[32m    f32 posX,[m
+[32m+[m[32m    f32 posY,[m
+[32m+[m[32m    f32 posZ,[m
+[32m+[m[32m    s16 rotX,[m
+[32m+[m[32m    s16 rotY,[m
+[32m+[m[32m    s16 rotZ,[m
+[32m+[m[32m    s16 params[m
+[32m+[m[32m) {[m
+[32m+[m[32m    int previousMapLoading = gMapLoading;[m
+[32m+[m[32m    Actor* actor;[m
+[32m+[m
+[32m+[m[32m    gMapLoading = 0;[m
+[32m+[m
+[32m+[m[32m    actor = Actor_Spawn([m
+[32m+[m[32m        actorCtx,[m
+[32m+[m[32m        play,[m
+[32m+[m[32m        actorId,[m
+[32m+[m[32m        posX,[m
+[32m+[m[32m        posY,[m
+[32m+[m[32m        posZ,[m
+[32m+[m[32m        rotX,[m
+[32m+[m[32m        rotY,[m
+[32m+[m[32m        rotZ,[m
+[32m+[m[32m        params[m
+[32m+[m[32m    );[m
+[32m+[m
+[32m+[m[32m    gMapLoading = previousMapLoading;[m
+[32m+[m
+[32m+[m[32m    return actor;[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mActor* Sekiro_SpawnEnemyFromActorEntry([m
+[32m+[m[32m    ActorContext* actorCtx,[m
+[32m+[m[32m    PlayState* play,[m
+[32m+[m[32m    const ActorEntry* sourceEntry,[m
+[32m+[m[32m    s16 actorId,[m
+[32m+[m[32m    s16 params[m
+[32m+[m[32m) {[m
+[32m+[m[32m    if (sourceEntry == NULL) {[m
+[32m+[m[32m        return NULL;[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    return Sekiro_SpawnEnemy([m
+[32m+[m[32m        actorCtx,[m
+[32m+[m[32m        play,[m
+[32m+[m[32m        actorId,[m
+[32m+[m[32m        sourceEntry->pos.x,[m
+[32m+[m[32m        sourceEntry->pos.y,[m
+[32m+[m[32m        sourceEntry->pos.z,[m
+[32m+[m[32m        0,[m
+[32m+[m[32m        sourceEntry->rot.y,[m
+[32m+[m[32m        0,[m
+[32m+[m[32m        params[m
+[32m+[m[32m    );[m
+[32m+[m[32m}[m
+[32m+[m
+ u8 Sekiro_GetPostureThreshold(Actor* enemy) {[m
+     if (enemy == NULL) {[m
+         return 3;[m
+[1mdiff --git a/soh/src/code/z_sekiro_combat.h b/soh/src/code/z_sekiro_combat.h[m
+[1mindex 467203049..8d6be03fe 100644[m
+[1m--- a/soh/src/code/z_sekiro_combat.h[m
+[1m+++ b/soh/src/code/z_sekiro_combat.h[m
+[36m@@ -3,7 +3,36 @@[m
+ [m
+ #include "global.h"[m
+ [m
+[32m+[m[32m#ifdef __cplusplus[m
+[32m+[m[32mextern "C" {[m
+[32m+[m[32m#endif[m
+[32m+[m
+ u8 Sekiro_GetPostureThreshold(Actor* enemy);[m
+ void Sekiro_ApplyPostureBreak(Actor* enemy);[m
+ [m
+[31m-#endif[m
+\ No newline at end of file[m
+[32m+[m[32mActor* Sekiro_SpawnEnemy([m
+[32m+[m[32m    ActorContext* actorCtx,[m
+[32m+[m[32m    PlayState* play,[m
+[32m+[m[32m    s16 actorId,[m
+[32m+[m[32m    f32 posX,[m
+[32m+[m[32m    f32 posY,[m
+[32m+[m[32m    f32 posZ,[m
+[32m+[m[32m    s16 rotX,[m
+[32m+[m[32m    s16 rotY,[m
+[32m+[m[32m    s16 rotZ,[m
+[32m+[m[32m    s16 params[m
+[32m+[m[32m);[m
+[32m+[m
+[32m+[m[32mActor* Sekiro_SpawnEnemyFromActorEntry([m
+[32m+[m[32m    ActorContext* actorCtx,[m
+[32m+[m[32m    PlayState* play,[m
+[32m+[m[32m    const ActorEntry* sourceEntry,[m
+[32m+[m[32m    s16 actorId,[m
+[32m+[m[32m    s16 params[m
+[32m+[m[32m);[m
+[32m+[m
+[32m+[m[32m#ifdef __cplusplus[m
+[32m+[m[32m}[m
+[32m+[m[32m#endif[m
+[32m+[m
+[32m+[m[32m#endif // Z_SEKIRO_COMBAT_H[m
+\ No newline at end of file[m

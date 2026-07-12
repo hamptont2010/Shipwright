@@ -10,6 +10,7 @@
 #include "soh/SohGui/SohMenu.h"
 
 extern "C" {
+#include "src/code/z_sekiro_combat.h"
 #include <z64.h>
 #include "src/overlays/actors/ovl_Bg_Haka/z_bg_haka.h"
 #include "src/overlays/actors/ovl_Bg_Haka_Huta/z_bg_haka_huta.h"
@@ -23,6 +24,7 @@ extern "C" {
 #include "src/overlays/actors/ovl_En_Vali/z_en_vali.h"
 
 extern PlayState* gPlayState;
+extern int gMapLoading;
 }
 
 namespace SohGui {
@@ -741,6 +743,34 @@ void RegisterEnemyRandomizer() {
 
     // If Random Gerudo Fighters are defeated, drop some items
     COND_ID_HOOK(OnEnemyDefeat, ACTOR_EN_GELDB, ENEMY_RANDOMIZER_ENABLED, OnGerudoFighterDefeat);
+
+    COND_VB_SHOULD(VB_SPAWN_ACTOR_ENTRY, true, {
+        ActorContext* actorCtx = va_arg(args, ActorContext*);
+        ActorEntry* actorEntry = va_arg(args, ActorEntry*);
+        PlayState* play = va_arg(args, PlayState*);
+        Actor** actor = va_arg(args, Actor**);
+
+        if (play->sceneNum == SCENE_DEKU_TREE &&
+            play->roomCtx.curRoom.num == 1 &&
+            actorEntry->id == ACTOR_EN_HINTNUTS &&
+            actorEntry->params == 6656) {
+
+            *should = false;
+
+
+            *actor = Sekiro_SpawnEnemyFromActorEntry(
+                actorCtx,
+                play,
+                actorEntry,
+                ACTOR_EN_TEST,
+                2
+            );
+
+            if (*actor == nullptr) {
+                SPDLOG_ERROR("Sekiro: failed to spawn replacement actor.");
+            }
+        }
+    });
 
     COND_VB_SHOULD(VB_SPAWN_ACTOR_ENTRY, ENEMY_RANDOMIZER_ENABLED, {
         ActorContext* actorCtx = va_arg(args, ActorContext*);
