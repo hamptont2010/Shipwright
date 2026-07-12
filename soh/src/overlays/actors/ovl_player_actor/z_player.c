@@ -4835,15 +4835,28 @@ s32 func_808382DC(Player* this, PlayState* play) {
                                 (f32)this->shieldQuad.info.bumper.hitPos.y,
                                 (f32)this->shieldQuad.info.bumper.hitPos.z,
                             };
-                            
+
                             this->linearVelocity = 0.0f;
 
                             CollisionCheck_SpawnShieldParticlesMetal(play, &deflectPos);
                             CollisionCheck_SpawnShieldParticlesMetal(play, &deflectPos);
                             Player_PlaySfx(this, NA_SE_IT_SHIELD_REFLECT_SW);
 
-                            if (attacker != NULL) {
-                                Actor_SetColorFilter(attacker, 0, 255, 0, 20);
+                            if ((attacker != NULL) && (attacker->category == ACTORCAT_ENEMY)) {
+                                if (this->deflectTarget == attacker) {
+                                    this->deflectCount++;
+                                } else {
+                                    this->deflectTarget = attacker;
+                                    this->deflectCount = 1;
+                                }
+
+                                if (this->deflectCount == 1) {
+                                    Actor_SetColorFilter(attacker, 0, 255, 0, 10);
+                                } else if (this->deflectCount == 2) {
+                                    Actor_SetColorFilter(attacker, 0, 255, 0, 30);
+                                } else {
+                                    Actor_SetColorFilter(attacker, 0x4000, 255, 0, 60);
+                                }
                             }
                         } else {
                             this->linearVelocity = -18.0f;
@@ -10759,6 +10772,10 @@ void Player_InitCommon(Player* this, PlayState* play, FlexSkeletonHeader* skelHe
     Collider_SetQuad(play, &this->shieldQuad, &this->actor, &D_808546A0);
 
     this->ivanDamageMultiplier = 1;
+
+    this->deflectTarget = NULL;
+    this->deflectCount = 0;
+    this->deflectTimer = 0;
 }
 
 static void (*sStartModeFuncs[PLAYER_START_MODE_MAX])(PlayState* play, Player* this) = {

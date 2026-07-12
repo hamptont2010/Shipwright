@@ -954,6 +954,8 @@ typedef struct Player {
     /*        */ u8 ivanDamageMultiplier;
     // #endregion
     // #region SOH [Sekiro Combat]
+    /*        */ Actor* deflectTarget;
+    /*        */ u8 deflectCount;
     /*        */ u8 deflectTimer;
     // #endregion
 
