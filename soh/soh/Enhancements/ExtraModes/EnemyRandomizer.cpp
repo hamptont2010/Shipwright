@@ -769,14 +769,12 @@ void RegisterEnemyRandomizer() {
 
             *should = false;
 
-            Flags_SetSwitch(play, 0);
-
             *actor = Sekiro_SpawnEnemyFromActorEntry(
                 actorCtx,
                 play,
                 actorEntry,
-                ACTOR_EN_GELDB,
-                0
+                ACTOR_EN_WF,
+                WOLFOS_NORMAL
             );
 
             if (*actor == nullptr) {

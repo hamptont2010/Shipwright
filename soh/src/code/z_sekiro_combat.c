@@ -75,19 +75,19 @@ u8 Sekiro_GetPostureThreshold(Actor* enemy) {
 
     switch (enemy->id) {
         case ACTOR_EN_DEKUBABA:
-            return 2;
+            return 1;
 
         case ACTOR_EN_TEST:
-            return 2;
+            return 3;
 
         case ACTOR_EN_ZF:
-            return 3;
+            return 2;
 
         case ACTOR_EN_WF:
-            return 3;
+            return 2;
 
         case ACTOR_EN_GELDB:
-            return 2;
+            return 4;
 
         default:
             return 3;
