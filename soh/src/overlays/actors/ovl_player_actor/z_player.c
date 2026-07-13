@@ -2752,7 +2752,7 @@ s32 func_80834758(PlayState* play, Player* this) {
         LinkAnimation_Change(play, &this->upperSkelAnime, anim, 1.0f, frame, frame, ANIMMODE_ONCE, 0.0f);
         Player_PlaySfx(this, NA_SE_IT_SHIELD_POSTURE);
 
-        this->deflectTimer = 6;
+        this->deflectTimer = 20;
 
         return 1;
     } else {
@@ -4854,37 +4854,12 @@ s32 func_808382DC(Player* this, PlayState* play) {
                                 (f32)this->shieldQuad.info.bumper.hitPos.z,
                             };
 
-                            this->linearVelocity = 0.0f;
-
-                            CollisionCheck_SpawnShieldParticlesMetal(play, &deflectPos);
-                            CollisionCheck_SpawnShieldParticlesMetal(play, &deflectPos);
-                            Player_PlaySfx(this, NA_SE_IT_SHIELD_REFLECT_SW);
-
-                            if ((attacker != NULL) && (attacker->category == ACTORCAT_ENEMY)) {
-                                if (attacker->freezeTimer == 0) {
-
-                                    postureThreshold = Sekiro_GetPostureThreshold(attacker);
-
-                                    if (this->deflectTarget == attacker) {
-                                        this->deflectCount++;
-                                    } else {
-                                        this->deflectTarget = attacker;
-                                        this->deflectCount = 1;
-                                    }
-
-                                    if (this->deflectCount >= postureThreshold) {
-                                        this->brokenTarget = attacker;
-                                        this->brokenTimer = 60;
-
-                                        Sekiro_ApplyPostureBreak(attacker);
-
-                                        this->deflectTarget = NULL;
-                                        this->deflectCount = 0;
-                                    } else {
-                                        Actor_SetColorFilter(attacker, 0, 255, 0, 20);
-                                    }
-                                }
-                            }
+                            Sekiro_RegisterDeflect(
+                                this,
+                                play,
+                                attacker,
+                                &deflectPos
+                            );
                         } else {
                             this->linearVelocity = -18.0f;
                         }

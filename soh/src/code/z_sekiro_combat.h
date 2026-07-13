@@ -10,6 +10,13 @@ extern "C" {
 u8 Sekiro_GetPostureThreshold(Actor* enemy);
 void Sekiro_ApplyPostureBreak(Actor* enemy);
 
+void Sekiro_RegisterDeflect(
+    Player* player,
+    PlayState* play,
+    Actor* attacker,
+    const Vec3f* deflectPos
+);
+
 Actor* Sekiro_SpawnEnemy(
     ActorContext* actorCtx,
     PlayState* play,

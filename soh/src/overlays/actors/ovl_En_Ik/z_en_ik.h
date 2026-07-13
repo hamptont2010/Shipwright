@@ -37,4 +37,7 @@ typedef struct EnIk {
     /* 0x04D8 */ char unk_4D8[0x04];
 } EnIk; // size = 0x04DC
 
+void EnIk_ApplyPostureBreak(EnIk* enIk);
+void EnIk_ActivateImmediately(EnIk* enIk);
+
 #endif

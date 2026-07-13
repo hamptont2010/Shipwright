@@ -5,6 +5,7 @@
 #include "overlays/actors/ovl_En_Zf/z_en_zf.h"
 #include "overlays/actors/ovl_En_Wf/z_en_wf.h"
 #include "overlays/actors/ovl_En_GeldB/z_en_geldb.h"
+#include "overlays/actors/ovl_En_Ik/z_en_ik.h"
 
 extern int gMapLoading;
 
@@ -89,6 +90,9 @@ u8 Sekiro_GetPostureThreshold(Actor* enemy) {
         case ACTOR_EN_GELDB:
             return 2;
 
+        case ACTOR_EN_IK:
+            return 2;
+
         default:
             return 3;
     }
@@ -120,8 +124,75 @@ void Sekiro_ApplyPostureBreak(Actor* enemy) {
             EnGeldB_ApplyPostureBreak((EnGeldB*)enemy);
             break;
 
+        case ACTOR_EN_IK:
+            EnIk_ApplyPostureBreak((EnIk*)enemy);
+            break;
+
         default:
             Actor_SetColorFilter(enemy, 0x4000, 255, 0, 60);
             break;
+    }
+}
+
+void Sekiro_RegisterDeflect(
+    Player* player,
+    PlayState* play,
+    Actor* attacker,
+    const Vec3f* deflectPos
+) {
+    u8 postureThreshold;
+
+    if ((player == NULL) || (play == NULL) || (attacker == NULL)) {
+        return;
+    }
+
+    if (attacker->category != ACTORCAT_ENEMY) {
+        return;
+    }
+
+    if (attacker->freezeTimer != 0) {
+        return;
+    }
+
+    player->linearVelocity = 0.0f;
+
+    if (deflectPos != NULL) {
+        CollisionCheck_SpawnShieldParticlesMetal(play, deflectPos);
+        CollisionCheck_SpawnShieldParticlesMetal(play, deflectPos);
+    }
+
+    Player_PlaySfx(player, NA_SE_IT_SHIELD_REFLECT_SW);
+
+    postureThreshold = Sekiro_GetPostureThreshold(attacker);
+
+    if (player->deflectTarget == attacker) {
+        player->deflectCount++;
+    } else {
+        player->deflectTarget = attacker;
+        player->deflectCount = 1;
+    }
+
+    osSyncPrintf(
+        "SEKIRO: attacker=%d posture=%d/%d\n",
+        attacker->id,
+        player->deflectCount,
+        postureThreshold
+    );
+
+    if (player->deflectCount >= postureThreshold) {
+        player->brokenTarget = attacker;
+        player->brokenTimer = 60;
+
+        osSyncPrintf(
+            "SEKIRO: posture break attacker=%d\n",
+            attacker->id
+        );
+
+        Sekiro_ApplyPostureBreak(attacker);
+
+        player->deflectTarget = NULL;
+        player->deflectCount = 0;
+    } else {
+        Actor_SetColorFilter(attacker, 0, 255, 0, 20);
     }
 }

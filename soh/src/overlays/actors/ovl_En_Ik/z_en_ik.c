@@ -279,6 +279,14 @@ Actor* func_80A74674(PlayState* play, Actor* actor) {
     return NULL;
 }
 
+void EnIk_ActivateImmediately(EnIk* enIk) {
+    if (enIk == NULL) {
+        return;
+    }
+
+    enIk->skelAnime.playSpeed = 1.0f;
+}
+
 void func_80A74714(EnIk* this) {
     f32 frames = Animation_GetLastFrame(&gIronKnuckleStandUpAnim);
     f32 frame;
@@ -473,6 +481,43 @@ void func_80A7506C(EnIk* this) {
     Animation_Change(&this->skelAnime, &gIronKnuckleAxeStuckAnim, 1.0f, 0.0f, frames, ANIMMODE_LOOP, -4.0f);
     Audio_PlayActorSound2(&this->actor, NA_SE_EN_IRONNACK_PULLOUT);
     EnIk_SetupAction(this, func_80A7510C);
+}
+
+void EnIk_ApplyPostureBreak(EnIk* enIk) {
+    osSyncPrintf("SEKIRO IK: ApplyPostureBreak()\n");
+    
+    if (enIk->actor.colChkInfo.health <= 0) {
+        return;
+    }
+
+    /*
+     * Cancel any active axe hit left over from the interrupted attack.
+     * unk_2FE controls whether the axe is treated as actively swinging.
+     */
+    enIk->axeCollider.base.atFlags &= ~(AT_HIT | AT_BOUNCED);
+    enIk->unk_2FE = 0;
+    enIk->unk_2FF = 0;
+    enIk->isBreakingProp = 0;
+
+    /* Clear pending incoming collision state. */
+    enIk->bodyCollider.base.acFlags &= ~AC_HIT;
+    enIk->shieldCollider.base.acFlags &= ~AC_BOUNCED;
+
+    /*
+     * Stop inherited attack movement. The native axe-stuck setup also
+     * controls its own animation and recovery state.
+     */
+    enIk->actor.speedXZ = 0.0f;
+    enIk->actor.velocity.x = 0.0f;
+    enIk->actor.velocity.z = 0.0f;
+
+    Actor_SetColorFilter(&enIk->actor, 0, 0x78, 0, 0x50);
+
+    /*
+     * Native Iron Knuckle vulnerability/recovery sequence:
+     * AxeStuck -> RecoverFromVerticalAttack -> normal combat.
+     */
+    func_80A7506C(enIk);
 }
 
 void func_80A7510C(EnIk* this, PlayState* play) {
@@ -777,21 +822,58 @@ void func_80A75FA0(Actor* thisx, PlayState* play) {
         return;
     }
     this->actionFunc(this, play);
-    if (this->axeCollider.base.atFlags & AT_HIT) {
+
+    if (this->axeCollider.base.atFlags & AT_BOUNCED) {
+        this->axeCollider.base.atFlags &= ~(AT_BOUNCED | AT_HIT);
+    } else if (this->axeCollider.base.atFlags & AT_HIT) {
         this->axeCollider.base.atFlags &= ~AT_HIT;
+
         if (&player->actor == this->axeCollider.base.at) {
-            prevInvincibilityTimer = player->invincibilityTimer;
-            if (player->invincibilityTimer <= 0) {
-                if (player->invincibilityTimer < -39) {
-                    player->invincibilityTimer = 0;
-                } else {
-                    player->invincibilityTimer = 0;
-                    play->damagePlayer(play, -64);
-                    this->unk_2FE = 0;
+            if (player->deflectTimer > 0) {
+                Vec3f deflectPos = player->actor.focus.pos;
+
+                /*
+                * Stop this swing from remaining active.
+                */
+                this->unk_2FE = 0;
+
+                /*
+                * Cancel Link's pending body-hit response. Without this,
+                * Player still sees AC_HIT and plays the damage voice even
+                * though Iron Knuckle's manual launch was suppressed.
+                */
+                player->cylinder.base.acFlags &= ~AC_HIT;
+                player->actor.colChkInfo.damage = 0;
+
+                Sekiro_RegisterDeflect(
+                    player,
+                    play,
+                    &this->actor,
+                    &deflectPos
+                );
+            } else {
+                prevInvincibilityTimer = player->invincibilityTimer;
+
+                if (player->invincibilityTimer <= 0) {
+                    if (player->invincibilityTimer < -39) {
+                        player->invincibilityTimer = 0;
+                    } else {
+                        player->invincibilityTimer = 0;
+                        play->damagePlayer(play, -64);
+                        this->unk_2FE = 0;
+                    }
                 }
+
+                Actor_SetPlayerKnockbackLargeNoDamage(
+                    play,
+                    &this->actor,
+                    8.0f,
+                    this->actor.yawTowardsPlayer,
+                    8.0f
+                );
+
+                player->invincibilityTimer = prevInvincibilityTimer;
             }
-            Actor_SetPlayerKnockbackLargeNoDamage(play, &this->actor, 8.0f, this->actor.yawTowardsPlayer, 8.0f);
-            player->invincibilityTimer = prevInvincibilityTimer;
         }
     }
     Actor_MoveXZGravity(&this->actor);

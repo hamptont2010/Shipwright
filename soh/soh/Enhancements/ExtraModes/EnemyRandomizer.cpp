@@ -13,6 +13,7 @@ extern "C" {
 
 #include "src/overlays/actors/ovl_En_Zf/z_en_zf.h"
 #include "overlays/actors/ovl_En_Wf/z_en_wf.h"
+#include "overlays/actors/ovl_En_Ik/z_en_ik.h"
 
 #include "src/code/z_sekiro_combat.h"
 #include <z64.h>
@@ -769,20 +770,19 @@ void RegisterEnemyRandomizer() {
 
             *should = false;
 
-            Flags_SetSwitch(play, 0);
-
             *actor = Sekiro_SpawnEnemyFromActorEntry(
                 actorCtx,
                 play,
                 actorEntry,
-                ACTOR_EN_GELDB,
-                0
+                ACTOR_EN_IK,
+                0x3F02
             );
 
             if (*actor == nullptr) {
-                SPDLOG_ERROR("Sekiro: failed to spawn Gerudo Fighter.");
+                SPDLOG_ERROR("Sekiro: failed to spawn Iron Knuckle.");
             } else {
-                SPDLOG_INFO("Sekiro: Gerudo Fighter spawned successfully.");
+                EnIk_ActivateImmediately((EnIk*)*actor);
+                SPDLOG_INFO("Sekiro: Iron Knuckle spawned and activated.");
             }
         }
     });
