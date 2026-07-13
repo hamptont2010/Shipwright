@@ -65,6 +65,7 @@ void EnGeldB_SpinDodge(EnGeldB* this, PlayState* play);
 void EnGeldB_Slash(EnGeldB* this, PlayState* play);
 void EnGeldB_SpinAttack(EnGeldB* this, PlayState* play);
 void EnGeldB_RollBack(EnGeldB* this, PlayState* play);
+void EnGeldB_SetupStunned(EnGeldB* this);
 void EnGeldB_Stunned(EnGeldB* this, PlayState* play);
 void EnGeldB_Damaged(EnGeldB* this, PlayState* play);
 void EnGeldB_Jump(EnGeldB* this, PlayState* play);
@@ -1004,6 +1005,32 @@ void EnGeldB_RollBack(EnGeldB* this, PlayState* play) {
     if ((play->state.frames & 0x5F) == 0) {
         Audio_PlayActorSound2(&this->actor, NA_SE_EN_GERUDOFT_BREATH);
     }
+}
+
+void EnGeldB_ApplyPostureBreak(EnGeldB* enGeldB) {
+    if (enGeldB->actor.colChkInfo.health <= 0) {
+        return;
+    }
+
+    /* Cancel any active sword attack. */
+    enGeldB->swordCollider.base.atFlags &= ~(AT_HIT | AT_BOUNCED);
+    enGeldB->meleeWeaponState = 0;
+    enGeldB->spinAttackState = 0;
+
+    /* Clear pending incoming-hit/block state. */
+    enGeldB->bodyCollider.base.acFlags &= ~AC_HIT;
+    enGeldB->blockCollider.base.acFlags &= ~AC_BOUNCED;
+
+    /* Cancel momentum inherited from slash/spin actions. */
+    enGeldB->actor.speedXZ = 0.0f;
+    enGeldB->actor.velocity.x = 0.0f;
+    enGeldB->actor.velocity.z = 0.0f;
+    enGeldB->invisible = false;
+
+    enGeldB->damageEffect = GELDB_DMG_STUN;
+
+    Actor_SetColorFilter(&enGeldB->actor, 0, 0x78, 0, 0x50);
+    EnGeldB_SetupStunned(enGeldB);
 }
 
 void EnGeldB_SetupStunned(EnGeldB* this) {

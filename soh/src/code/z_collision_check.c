@@ -3028,7 +3028,7 @@ void CollisionCheck_ApplyDamage(PlayState* play, CollisionCheckContext* colChkCt
 
     if ((player->brokenTarget == collider->actor) &&
         (info->acHitInfo->toucher.dmgFlags != 0)) {
-        damage *= 4.0f;
+        damage = collider->actor->colChkInfo.health;
 
         player->brokenTarget = NULL;
         player->brokenTimer = 0;

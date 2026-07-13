@@ -4,6 +4,7 @@
 #include "overlays/actors/ovl_En_Test/z_en_test.h"
 #include "overlays/actors/ovl_En_Zf/z_en_zf.h"
 #include "overlays/actors/ovl_En_Wf/z_en_wf.h"
+#include "overlays/actors/ovl_En_GeldB/z_en_geldb.h"
 
 extern int gMapLoading;
 
@@ -85,6 +86,9 @@ u8 Sekiro_GetPostureThreshold(Actor* enemy) {
         case ACTOR_EN_WF:
             return 3;
 
+        case ACTOR_EN_GELDB:
+            return 2;
+
         default:
             return 3;
     }
@@ -110,6 +114,10 @@ void Sekiro_ApplyPostureBreak(Actor* enemy) {
 
         case ACTOR_EN_WF:
             EnWf_ApplyPostureBreak((EnWf*)enemy);
+            break;
+            
+        case ACTOR_EN_GELDB:
+            EnGeldB_ApplyPostureBreak((EnGeldB*)enemy);
             break;
 
         default:

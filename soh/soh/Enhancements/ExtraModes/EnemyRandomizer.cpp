@@ -754,6 +754,14 @@ void RegisterEnemyRandomizer() {
         PlayState* play = va_arg(args, PlayState*);
         Actor** actor = va_arg(args, Actor**);
 
+        SPDLOG_INFO(
+            "Sekiro Hook: scene={}, room={}, actor={}, params={}",
+            play->sceneNum,
+            play->roomCtx.curRoom.num,
+            actorEntry->id,
+            actorEntry->params
+        );
+
         if (play->sceneNum == SCENE_DEKU_TREE &&
             play->roomCtx.curRoom.num == 1 &&
             actorEntry->id == ACTOR_EN_HINTNUTS &&
@@ -761,17 +769,20 @@ void RegisterEnemyRandomizer() {
 
             *should = false;
 
+            Flags_SetSwitch(play, 0);
 
             *actor = Sekiro_SpawnEnemyFromActorEntry(
                 actorCtx,
                 play,
                 actorEntry,
-                ACTOR_EN_WF,
-                WOLFOS_NORMAL
+                ACTOR_EN_GELDB,
+                0
             );
 
             if (*actor == nullptr) {
-                SPDLOG_ERROR("Sekiro: failed to spawn replacement actor.");
+                SPDLOG_ERROR("Sekiro: failed to spawn Gerudo Fighter.");
+            } else {
+                SPDLOG_INFO("Sekiro: Gerudo Fighter spawned successfully.");
             }
         }
     });

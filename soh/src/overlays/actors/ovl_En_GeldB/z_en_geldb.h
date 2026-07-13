@@ -69,4 +69,6 @@ typedef struct EnGeldB {
     /* 0x04DC */ Vec3s headRot;
 } EnGeldB; // size = 0x04E4
 
+void EnGeldB_ApplyPostureBreak(EnGeldB* enGeldB);
+
 #endif
