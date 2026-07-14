@@ -483,39 +483,44 @@ void func_80A7506C(EnIk* this) {
     EnIk_SetupAction(this, func_80A7510C);
 }
 
-void EnIk_ApplyPostureBreak(EnIk* enIk) {
-    osSyncPrintf("SEKIRO IK: ApplyPostureBreak()\n");
-    
+void EnIk_ApplyPostureBreak(EnIk* enIk, PlayState* play) {
+    if ((enIk == NULL) || (play == NULL)) {
+        return;
+    }
+
     if (enIk->actor.colChkInfo.health <= 0) {
         return;
     }
 
     /*
-     * Cancel any active axe hit left over from the interrupted attack.
-     * unk_2FE controls whether the axe is treated as actively swinging.
+     * First posture break: enter the unarmored phase.
      */
-    enIk->axeCollider.base.atFlags &= ~(AT_HIT | AT_BOUNCED);
-    enIk->unk_2FE = 0;
-    enIk->unk_2FF = 0;
-    enIk->isBreakingProp = 0;
+    if ((enIk->actor.params != 0) && (enIk->armorStatusFlag == 0)) {
+        enIk->axeCollider.base.atFlags &= ~(AT_HIT | AT_BOUNCED);
+        enIk->unk_2FE = 0;
 
-    /* Clear pending incoming collision state. */
-    enIk->bodyCollider.base.acFlags &= ~AC_HIT;
-    enIk->shieldCollider.base.acFlags &= ~AC_BOUNCED;
+        enIk->armorStatusFlag = 1;
+        BodyBreak_Alloc(&enIk->bodyBreak, 3, play);
+
+        Sekiro_LogIkState(
+            "ARMOR_BREAK_ALLOCATED",
+            enIk->armorStatusFlag,
+            enIk->bodyBreak.val,
+            enIk->unk_2FE,
+            0
+        );
+
+        Audio_PlayActorSound2(
+            &enIk->actor,
+            NA_SE_EN_IRONNACK_ARMOR_OFF_DEMO
+        );
+
+        func_80A7506C(enIk);
+        return;
+    }
 
     /*
-     * Stop inherited attack movement. The native axe-stuck setup also
-     * controls its own animation and recovery state.
-     */
-    enIk->actor.speedXZ = 0.0f;
-    enIk->actor.velocity.x = 0.0f;
-    enIk->actor.velocity.z = 0.0f;
-
-    Actor_SetColorFilter(&enIk->actor, 0, 0x78, 0, 0x50);
-
-    /*
-     * Native Iron Knuckle vulnerability/recovery sequence:
-     * AxeStuck -> RecoverFromVerticalAttack -> normal combat.
+     * Temporary phase-two behavior.
      */
     func_80A7506C(enIk);
 }
@@ -829,19 +834,13 @@ void func_80A75FA0(Actor* thisx, PlayState* play) {
         this->axeCollider.base.atFlags &= ~AT_HIT;
 
         if (&player->actor == this->axeCollider.base.at) {
-            if (player->deflectTimer > 0) {
+            if ((player->deflectTimer > 0) &&
+                (player->stateFlags1 & PLAYER_STATE1_SHIELDING)) {
+
                 Vec3f deflectPos = player->actor.focus.pos;
 
-                /*
-                * Stop this swing from remaining active.
-                */
                 this->unk_2FE = 0;
 
-                /*
-                * Cancel Link's pending body-hit response. Without this,
-                * Player still sees AC_HIT and plays the damage voice even
-                * though Iron Knuckle's manual launch was suppressed.
-                */
                 player->cylinder.base.acFlags &= ~AC_HIT;
                 player->actor.colChkInfo.damage = 0;
 
@@ -851,7 +850,15 @@ void func_80A75FA0(Actor* thisx, PlayState* play) {
                     &this->actor,
                     &deflectPos
                 );
+
+                /*
+                * This perfect-deflect window has now been used.
+                */
+                player->deflectTimer = 0;
             } else {
+                /*
+                * Normal Iron Knuckle damage and knockback.
+                */
                 prevInvincibilityTimer = player->invincibilityTimer;
 
                 if (player->invincibilityTimer <= 0) {

@@ -98,7 +98,13 @@ u8 Sekiro_GetPostureThreshold(Actor* enemy) {
     }
 }
 
-void Sekiro_ApplyPostureBreak(Actor* enemy) {
+void Sekiro_LogDeflect(
+    s16 actorId,
+    s16 colorTimer,
+    u8 deflectTimer
+);
+
+void Sekiro_ApplyPostureBreak(Actor* enemy, PlayState* play) {
     if (enemy == NULL) {
         return;
     }
@@ -125,7 +131,7 @@ void Sekiro_ApplyPostureBreak(Actor* enemy) {
             break;
 
         case ACTOR_EN_IK:
-            EnIk_ApplyPostureBreak((EnIk*)enemy);
+            EnIk_ApplyPostureBreak((EnIk*)enemy, play);
             break;
 
         default:
@@ -133,6 +139,7 @@ void Sekiro_ApplyPostureBreak(Actor* enemy) {
             break;
     }
 }
+
 
 void Sekiro_RegisterDeflect(
     Player* player,
@@ -145,6 +152,12 @@ void Sekiro_RegisterDeflect(
     if ((player == NULL) || (play == NULL) || (attacker == NULL)) {
         return;
     }
+
+    Sekiro_LogDeflect(
+        attacker->id,
+        attacker->colorFilterTimer,
+        player->deflectTimer
+    );
 
     if (attacker->category != ACTORCAT_ENEMY) {
         return;
@@ -188,7 +201,7 @@ void Sekiro_RegisterDeflect(
             attacker->id
         );
 
-        Sekiro_ApplyPostureBreak(attacker);
+        Sekiro_ApplyPostureBreak(attacker, play);
 
         player->deflectTarget = NULL;
         player->deflectCount = 0;

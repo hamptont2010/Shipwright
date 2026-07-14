@@ -30,6 +30,51 @@ extern "C" {
 
 extern PlayState* gPlayState;
 extern int gMapLoading;
+
+void Sekiro_LogDeflect(
+    s16 actorId,
+    s16 colorTimer,
+    u8 deflectTimer
+);
+
+void Sekiro_LogIkState(
+    const char* event,
+    s16 armorStatus,
+    s16 bodyBreakStatus,
+    s16 axeActive,
+    s16 deflectTimer
+);
+
+}
+
+extern "C" void Sekiro_LogDeflect(
+    s16 actorId,
+    s16 colorTimer,
+    u8 deflectTimer
+) {
+    SPDLOG_INFO(
+        "SEKIRO_REGISTER_DEFLECT actor={} color={} timer={}",
+        actorId,
+        colorTimer,
+        deflectTimer
+    );
+}
+
+extern "C" void Sekiro_LogIkState(
+    const char* event,
+    s16 armorStatus,
+    s16 bodyBreakStatus,
+    s16 axeActive,
+    s16 deflectTimer
+) {
+    SPDLOG_INFO(
+        "SEKIRO_IK event={} armor={} bodyBreak={} axe={} timer={}",
+        event,
+        armorStatus,
+        bodyBreakStatus,
+        axeActive,
+        deflectTimer
+    );
 }
 
 namespace SohGui {
