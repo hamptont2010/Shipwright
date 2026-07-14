@@ -53,6 +53,7 @@ void func_80A77ED0(EnIk* this, PlayState* play);
 void func_80A77EDC(EnIk* this, PlayState* play);
 void func_80A78160(EnIk* this, PlayState* play);
 void func_80A781CC(Actor* thisx, PlayState* play);
+void func_80A758B0(EnIk* enIk, PlayState* play);
 
 static ColliderCylinderInit sCylinderInit = {
     {
@@ -483,6 +484,51 @@ void func_80A7506C(EnIk* this) {
     EnIk_SetupAction(this, func_80A7510C);
 }
 
+void EnIk_SetupSekiroArmorBreak(EnIk* enIk) {
+    f32 frames;
+
+    enIk->unk_2F8 = 0;
+    enIk->unk_2FE = 0;
+
+    /*
+     * The deflected attack came from Link, so use the actor's existing
+     * facing relationship instead of dereferencing bodyCollider.base.ac.
+     */
+    if (ABS((s16)(enIk->actor.yawTowardsPlayer -
+                  enIk->actor.shape.rot.y)) <= 0x4000) {
+
+        frames = Animation_GetLastFrame(&gIronKnuckleFrontHitAnim);
+
+        Animation_Change(
+            &enIk->skelAnime,
+            &gIronKnuckleFrontHitAnim,
+            1.0f,
+            0.0f,
+            frames,
+            ANIMMODE_ONCE,
+            -4.0f
+        );
+
+        enIk->actor.speedXZ = -6.0f;
+    } else {
+        frames = Animation_GetLastFrame(&gIronKnuckleBackHitAnim);
+
+        Animation_Change(
+            &enIk->skelAnime,
+            &gIronKnuckleBackHitAnim,
+            1.0f,
+            0.0f,
+            frames,
+            ANIMMODE_ONCE,
+            -4.0f
+        );
+
+        enIk->actor.speedXZ = 6.0f;
+    }
+
+    EnIk_SetupAction(enIk, func_80A758B0);
+}
+
 void EnIk_ApplyPostureBreak(EnIk* enIk, PlayState* play) {
     if ((enIk == NULL) || (play == NULL)) {
         return;
@@ -515,7 +561,7 @@ void EnIk_ApplyPostureBreak(EnIk* enIk, PlayState* play) {
             NA_SE_EN_IRONNACK_ARMOR_OFF_DEMO
         );
 
-        func_80A7506C(enIk);
+        EnIk_SetupSekiroArmorBreak(enIk);
         return;
     }
 
