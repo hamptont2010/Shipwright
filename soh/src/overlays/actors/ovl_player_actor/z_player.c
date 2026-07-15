@@ -2742,6 +2742,13 @@ s32 func_80834758(PlayState* play, Player* this) {
     LinkAnimationHeader* anim;
     f32 frame;
 
+    // TEMPORARY DEATHBLOW ANIMATION TEST
+    if (CHECK_BTN_ALL(sControlInput->cur.button, BTN_L) &&
+        CHECK_BTN_ALL(sControlInput->press.button, BTN_R)) {
+        Player_SetCsActionWithHaltedActors(play, &this->actor, PLAYER_CSACTION_97);
+        return 1;
+    }
+
     if (!(this->stateFlags1 & (PLAYER_STATE1_SHIELDING | PLAYER_STATE1_ON_HORSE | PLAYER_STATE1_IN_CUTSCENE)) &&
         (play->shootingGalleryStatus == 0) && (this->heldItemAction == this->itemAction) &&
         (this->currentShield != PLAYER_SHIELD_NONE) && !Player_IsChildWithHylianShield(this) &&
@@ -16341,7 +16348,63 @@ void func_8085283C(PlayState* play, Player* this, CsCmdActorCue* cue) {
 }
 
 void func_808528C8(PlayState* play, Player* this, CsCmdActorCue* cue) {
-    if (LinkAnimation_Update(play, &this->skelAnime)) {
+    s32 animFinished;
+    Actor* target = this->brokenTarget;
+
+    if (this->csAction == PLAYER_CSACTION_97) {
+        this->skelAnime.playSpeed = 1.5f;
+    }
+
+    animFinished = LinkAnimation_Update(play, &this->skelAnime);
+
+    // First cinematic slash: swing sound
+    if ((this->csAction == PLAYER_CSACTION_97) &&
+        LinkAnimation_OnFrame(&this->skelAnime, 10.0f)) {
+        Sfx_PlaySfxCentered(NA_SE_IT_SWORD_SWING_HARD);
+        Sfx_PlaySfxCentered(NA_SE_VO_LI_SWORD_N);
+    }
+
+    // First cinematic slash: blood impact
+    if ((this->csAction == PLAYER_CSACTION_97) &&
+        LinkAnimation_OnFrame(&this->skelAnime, 14.0f) &&
+        (target != NULL) &&
+        (target->update != NULL)) {
+        Vec3f impactPos = target->focus.pos;
+
+        CollisionCheck_SpawnRedBlood(play, &impactPos);
+    }
+
+    // Second cinematic slash: swing sound
+    if ((this->csAction == PLAYER_CSACTION_97) &&
+        LinkAnimation_OnFrame(&this->skelAnime, 30.0f)) {
+        Sfx_PlaySfxCentered(NA_SE_IT_SWORD_SWING_HARD);
+        Sfx_PlaySfxCentered(NA_SE_VO_LI_SWORD_N);
+    }
+
+    // Second cinematic slash: blood impact
+    if ((this->csAction == PLAYER_CSACTION_97) &&
+        LinkAnimation_OnFrame(&this->skelAnime, 34.0f) &&
+        (target != NULL) &&
+        (target->update != NULL)) {
+        Vec3f impactPos = target->focus.pos;
+
+        CollisionCheck_SpawnRedBlood(play, &impactPos);
+    }
+
+    // End the cinematic portion and hand off into a real native stab.
+    if ((this->csAction == PLAYER_CSACTION_97) &&
+        LinkAnimation_OnFrame(&this->skelAnime, 40.0f)) {
+        Player_SetCsAction(play, NULL, PLAYER_CSACTION_7);
+        func_80837948(play, this, PLAYER_MWA_STAB_1H);
+        return;
+    }
+
+    if (animFinished) {
+        if (this->csAction == PLAYER_CSACTION_97) {
+            Player_SetCsAction(play, NULL, PLAYER_CSACTION_7);
+            return;
+        }
+
         func_8084285C(this, 0.0f, 99.0f, this->skelAnime.endFrame - 8.0f);
     }
 
