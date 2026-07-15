@@ -54,6 +54,7 @@ void func_80A77EDC(EnIk* this, PlayState* play);
 void func_80A78160(EnIk* this, PlayState* play);
 void func_80A781CC(Actor* thisx, PlayState* play);
 void func_80A758B0(EnIk* enIk, PlayState* play);
+void EnIk_SekiroAxeStuck(EnIk* enIk, PlayState* play);
 
 static ColliderCylinderInit sCylinderInit = {
     {
@@ -484,6 +485,112 @@ void func_80A7506C(EnIk* this) {
     EnIk_SetupAction(this, func_80A7510C);
 }
 
+void EnIk_SetupSekiroAxeStuck(EnIk* enIk) {
+    f32 frames;
+
+    if (enIk == NULL) {
+        return;
+    }
+
+    enIk->axeCollider.base.atFlags &= ~(AT_HIT | AT_BOUNCED);
+    enIk->bodyCollider.base.acFlags &= ~AC_HIT;
+    enIk->shieldCollider.base.acFlags &= ~AC_BOUNCED;
+
+    enIk->unk_2FE = 0;
+    enIk->unk_2FF = 0;
+    enIk->isBreakingProp = 0;
+    enIk->actor.speedXZ = 0.0f;
+
+    frames = Animation_GetLastFrame(&gIronKnuckleAxeStuckAnim);
+
+    enIk->unk_2F8 = 7;
+
+    /*
+     * Length of the posture-break opening.
+     * Start with 90 frames, roughly 1.5 seconds.
+     */
+    enIk->animationTimer = 90;
+
+    Actor_SetColorFilter(
+        &enIk->actor,
+        0x4000,
+        255,
+        0,
+        90
+    );
+
+    Animation_Change(
+        &enIk->skelAnime,
+        &gIronKnuckleAxeStuckAnim,
+        1.0f,
+        0.0f,
+        frames,
+        ANIMMODE_ONCE,
+        -4.0f
+    );
+
+    Audio_PlayActorSound2(
+        &enIk->actor,
+        NA_SE_EN_IRONNACK_PULLOUT
+    );
+
+    EnIk_SetupAction(enIk, EnIk_SekiroAxeStuck);
+}
+
+void EnIk_SekiroAxeStuck(EnIk* enIk, PlayState* play) {
+    f32 frames;
+
+    enIk->actor.speedXZ = 0.0f;
+    enIk->unk_2FE = 0;
+
+    /*
+     * Phase 0: play the falling/stuck animation once.
+     */
+    if (enIk->unk_2FF == 0) {
+        if (SkelAnime_Update(&enIk->skelAnime)) {
+            frames = Animation_GetLastFrame(
+                &gIronKnuckleAxeStuckAnim
+            );
+
+            enIk->skelAnime.curFrame = frames;
+            enIk->skelAnime.playSpeed = 0.0f;
+            enIk->unk_2FF = 1;
+        }
+
+        return;
+    }
+
+    /*
+     * Phase 1: hold the final pose while remaining damageable.
+     */
+    if (enIk->animationTimer > 0) {
+        enIk->animationTimer--;
+        return;
+    }
+
+    /*
+     * Resume Nintendo's native recovery animation.
+     */
+    frames = Animation_GetLastFrame(
+        &gIronKnuckleRecoverFromVerticalAttackAnim
+    );
+
+    enIk->unk_2F8 = 8;
+    enIk->unk_2FF = 0;
+
+    Animation_Change(
+        &enIk->skelAnime,
+        &gIronKnuckleRecoverFromVerticalAttackAnim,
+        1.5f,
+        0.0f,
+        frames,
+        ANIMMODE_ONCE_INTERP,
+        -4.0f
+    );
+
+    EnIk_SetupAction(enIk, func_80A7510C);
+}
+
 void EnIk_SetupSekiroArmorBreak(EnIk* enIk) {
     f32 frames;
 
@@ -566,9 +673,17 @@ void EnIk_ApplyPostureBreak(EnIk* enIk, PlayState* play) {
     }
 
     /*
-     * Temporary phase-two behavior.
-     */
-    func_80A7506C(enIk);
+    * Second posture break: force the native axe-stuck opening.
+    */
+    Sekiro_LogIkState(
+        "AXE_STUCK",
+        enIk->armorStatusFlag,
+        enIk->bodyBreak.val,
+        enIk->unk_2FE,
+        0
+    );
+
+    EnIk_SetupSekiroAxeStuck(enIk);
 }
 
 void func_80A7510C(EnIk* this, PlayState* play) {
@@ -935,9 +1050,19 @@ void func_80A75FA0(Actor* thisx, PlayState* play) {
     this->actor.focus.pos.y += 45.0f;
     Collider_UpdateCylinder(&this->actor, &this->bodyCollider);
     CollisionCheck_SetOC(play, &play->colChkCtx, &this->bodyCollider.base);
-    if ((this->actor.colChkInfo.health > 0) && (this->actor.colorFilterTimer == 0) && (this->unk_2F8 >= 2)) {
-        CollisionCheck_SetAC(play, &play->colChkCtx, &this->bodyCollider.base);
+
+    if ((this->actor.colChkInfo.health > 0) &&
+        ((this->actor.colorFilterTimer == 0) ||
+        (this->actionFunc == EnIk_SekiroAxeStuck)) &&
+        (this->unk_2F8 >= 2)) {
+
+        CollisionCheck_SetAC(
+            play,
+            &play->colChkCtx,
+            &this->bodyCollider.base
+        );
     }
+
     if (this->unk_2FE > 0) {
         CollisionCheck_SetAT(play, &play->colChkCtx, &this->axeCollider.base);
     }
