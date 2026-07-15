@@ -9,6 +9,7 @@ extern "C" {
 
 u8 Sekiro_GetPostureThreshold(Actor* enemy);
 void Sekiro_ApplyPostureBreak(Actor* enemy, PlayState* play);
+void Sekiro_PlayDeathblowSwing(void);
 
 void Sekiro_RegisterDeflect(
     Player* player,

@@ -209,3 +209,12 @@ void Sekiro_RegisterDeflect(
         Actor_SetColorFilter(attacker, 0, 255, 0, 20);
     }
 }
+
+/**
+ * Deathblow logic
+ */
+
+ void Sekiro_PlayDeathblowSwing(void) {
+    Sfx_PlaySfxCentered(NA_SE_IT_SWORD_SWING_HARD);
+    Sfx_PlaySfxCentered(NA_SE_VO_LI_SWORD_N);
+}

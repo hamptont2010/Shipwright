@@ -16360,8 +16360,7 @@ void func_808528C8(PlayState* play, Player* this, CsCmdActorCue* cue) {
     // First cinematic slash: swing sound
     if ((this->csAction == PLAYER_CSACTION_97) &&
         LinkAnimation_OnFrame(&this->skelAnime, 10.0f)) {
-        Sfx_PlaySfxCentered(NA_SE_IT_SWORD_SWING_HARD);
-        Sfx_PlaySfxCentered(NA_SE_VO_LI_SWORD_N);
+        Sekiro_PlayDeathblowSwing();
     }
 
     // First cinematic slash: blood impact
@@ -16377,8 +16376,7 @@ void func_808528C8(PlayState* play, Player* this, CsCmdActorCue* cue) {
     // Second cinematic slash: swing sound
     if ((this->csAction == PLAYER_CSACTION_97) &&
         LinkAnimation_OnFrame(&this->skelAnime, 30.0f)) {
-        Sfx_PlaySfxCentered(NA_SE_IT_SWORD_SWING_HARD);
-        Sfx_PlaySfxCentered(NA_SE_VO_LI_SWORD_N);
+        Sekiro_PlayDeathblowSwing();
     }
 
     // Second cinematic slash: blood impact
