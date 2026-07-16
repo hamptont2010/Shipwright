@@ -10,6 +10,18 @@ extern "C" {
 u8 Sekiro_GetPostureThreshold(Actor* enemy);
 void Sekiro_ApplyPostureBreak(Actor* enemy, PlayState* play);
 void Sekiro_PlayDeathblowSwing(void);
+void Sekiro_StartDeathblowFinisher(PlayState* play, Player* player);
+s32 Sekiro_UpdateDeathblow(PlayState* play, Player* player);
+
+typedef enum {
+    SEKIRO_IMPACT_NONE,
+    SEKIRO_IMPACT_RED_BLOOD,
+    SEKIRO_IMPACT_GREEN_BLOOD,
+    SEKIRO_IMPACT_BLUE_BLOOD,
+    SEKIRO_IMPACT_METAL,
+} SekiroImpactType;
+
+void Sekiro_SpawnDeathblowImpact(PlayState* play, Actor* target, SekiroImpactType impactType);
 
 void Sekiro_RegisterDeflect(
     Player* player,

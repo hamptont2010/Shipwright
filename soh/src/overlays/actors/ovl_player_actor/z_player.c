@@ -16349,61 +16349,17 @@ void func_8085283C(PlayState* play, Player* this, CsCmdActorCue* cue) {
 
 void func_808528C8(PlayState* play, Player* this, CsCmdActorCue* cue) {
     s32 animFinished;
-    Actor* target = this->brokenTarget;
 
     if (this->csAction == PLAYER_CSACTION_97) {
-        this->skelAnime.playSpeed = 1.5f;
-    }
-
-    animFinished = LinkAnimation_Update(play, &this->skelAnime);
-
-    // First cinematic slash: swing sound
-    if ((this->csAction == PLAYER_CSACTION_97) &&
-        LinkAnimation_OnFrame(&this->skelAnime, 10.0f)) {
-        Sekiro_PlayDeathblowSwing();
-    }
-
-    // First cinematic slash: blood impact
-    if ((this->csAction == PLAYER_CSACTION_97) &&
-        LinkAnimation_OnFrame(&this->skelAnime, 14.0f) &&
-        (target != NULL) &&
-        (target->update != NULL)) {
-        Vec3f impactPos = target->focus.pos;
-
-        CollisionCheck_SpawnRedBlood(play, &impactPos);
-    }
-
-    // Second cinematic slash: swing sound
-    if ((this->csAction == PLAYER_CSACTION_97) &&
-        LinkAnimation_OnFrame(&this->skelAnime, 30.0f)) {
-        Sekiro_PlayDeathblowSwing();
-    }
-
-    // Second cinematic slash: blood impact
-    if ((this->csAction == PLAYER_CSACTION_97) &&
-        LinkAnimation_OnFrame(&this->skelAnime, 34.0f) &&
-        (target != NULL) &&
-        (target->update != NULL)) {
-        Vec3f impactPos = target->focus.pos;
-
-        CollisionCheck_SpawnRedBlood(play, &impactPos);
-    }
-
-    // End the cinematic portion and hand off into a real native stab.
-    if ((this->csAction == PLAYER_CSACTION_97) &&
-        LinkAnimation_OnFrame(&this->skelAnime, 40.0f)) {
-        Player_SetCsAction(play, NULL, PLAYER_CSACTION_7);
-        func_80837948(play, this, PLAYER_MWA_STAB_1H);
-        return;
-    }
-
-    if (animFinished) {
-        if (this->csAction == PLAYER_CSACTION_97) {
-            Player_SetCsAction(play, NULL, PLAYER_CSACTION_7);
+        if (Sekiro_UpdateDeathblow(play, this)) {
             return;
         }
+    } else {
+        animFinished = LinkAnimation_Update(play, &this->skelAnime);
 
-        func_8084285C(this, 0.0f, 99.0f, this->skelAnime.endFrame - 8.0f);
+        if (animFinished) {
+            func_8084285C(this, 0.0f, 99.0f, this->skelAnime.endFrame - 8.0f);
+        }
     }
 
     if (this->heldItemAction != PLAYER_IA_SWORD_MASTER) {
