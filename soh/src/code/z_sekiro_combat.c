@@ -313,17 +313,80 @@ s32 Sekiro_UpdateDeathblow(PlayState* play, Player* player) {
 
 s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
     Actor* target = player->brokenTarget;
+    Vec3f frontPos;
+    Vec3f backPos;
+    f32 frontDistSq;
+    f32 backDistSq;
+    f32 snapDistance = LINK_IS_CHILD ? 50.0f : 70.0f;
+    f32 sinYaw;
+    f32 cosYaw;
+    s16 yawToTarget;
 
     // There is no valid posture-broken target.
     if ((target == NULL) || (target->update == NULL)) {
         return 0;
     }
 
-    // The posture-broken enemy must be Link's current hostile lock-on target.
+    // The broken enemy must be Link's current hostile lock-on target.
     if ((player->focusActor != target) ||
         !Player_CheckHostileLockOn(player)) {
         return 0;
     }
+
+    /*
+     * Calculate points directly in front of and behind the enemy,
+     * based on the direction the enemy is facing.
+     */
+    sinYaw = Math_SinS(target->shape.rot.y);
+    cosYaw = Math_CosS(target->shape.rot.y);
+
+    frontPos = target->world.pos;
+    frontPos.x += sinYaw * snapDistance;
+    frontPos.z += cosYaw * snapDistance;
+
+    backPos = target->world.pos;
+    backPos.x -= sinYaw * snapDistance;
+    backPos.z -= cosYaw * snapDistance;
+
+    /*
+     * Determine whether Link is currently closer to the enemy's
+     * front or back.
+     */
+    frontDistSq =
+        SQ(player->actor.world.pos.x - frontPos.x) +
+        SQ(player->actor.world.pos.z - frontPos.z);
+
+    backDistSq =
+        SQ(player->actor.world.pos.x - backPos.x) +
+        SQ(player->actor.world.pos.z - backPos.z);
+
+    /*
+     * Snap Link to the nearer point.
+     *
+     * Preserve Link's current Y position for now so we don't
+     * accidentally teleport him vertically through floors.
+     */
+    if (frontDistSq <= backDistSq) {
+        player->actor.world.pos.x = frontPos.x;
+        player->actor.world.pos.z = frontPos.z;
+    } else {
+        player->actor.world.pos.x = backPos.x;
+        player->actor.world.pos.z = backPos.z;
+    }
+
+    // Face Link directly toward the target.
+    yawToTarget =
+        Math_Vec3f_Yaw(&player->actor.world.pos, &target->world.pos);
+
+    player->actor.shape.rot.y = yawToTarget;
+    player->actor.world.rot.y = yawToTarget;
+    player->yaw = yawToTarget;
+
+    // Prevent existing movement from carrying Link away after the snap.
+    player->linearVelocity = 0.0f;
+    player->actor.speedXZ = 0.0f;
+    player->actor.velocity.x = 0.0f;
+    player->actor.velocity.z = 0.0f;
 
     Player_SetCsActionWithHaltedActors(
         play,
