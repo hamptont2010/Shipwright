@@ -310,3 +310,26 @@ s32 Sekiro_UpdateDeathblow(PlayState* play, Player* player) {
 
     return false;
 }
+
+s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
+    Actor* target = player->brokenTarget;
+
+    // There is no valid posture-broken target.
+    if ((target == NULL) || (target->update == NULL)) {
+        return 0;
+    }
+
+    // The posture-broken enemy must be Link's current hostile lock-on target.
+    if ((player->focusActor != target) ||
+        !Player_CheckHostileLockOn(player)) {
+        return 0;
+    }
+
+    Player_SetCsActionWithHaltedActors(
+        play,
+        &player->actor,
+        PLAYER_CSACTION_97
+    );
+
+    return 1;
+}

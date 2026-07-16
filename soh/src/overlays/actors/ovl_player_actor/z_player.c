@@ -2742,12 +2742,12 @@ s32 func_80834758(PlayState* play, Player* this) {
     LinkAnimationHeader* anim;
     f32 frame;
 
-    // TEMPORARY DEATHBLOW ANIMATION TEST
+    /*/ TEMPORARY DEATHBLOW ANIMATION TEST
     if (CHECK_BTN_ALL(sControlInput->cur.button, BTN_L) &&
         CHECK_BTN_ALL(sControlInput->press.button, BTN_R)) {
         Player_SetCsActionWithHaltedActors(play, &this->actor, PLAYER_CSACTION_97);
         return 1;
-    }
+    } */
 
     if (!(this->stateFlags1 & (PLAYER_STATE1_SHIELDING | PLAYER_STATE1_ON_HORSE | PLAYER_STATE1_IN_CUTSCENE)) &&
         (play->shootingGalleryStatus == 0) && (this->heldItemAction == this->itemAction) &&
@@ -15059,6 +15059,10 @@ void Player_UpdateBunnyEars(Player* this) {
 s32 Player_ActionHandler_7(Player* this, PlayState* play) {
     if (func_8083C6B8(play, this) == 0) {
         if (func_8083BB20(this) != 0) {
+            if (Sekiro_TryStartDeathblow(play, this)) {
+                return 1;
+            }
+
             s32 sp24 = func_80837818(this);
 
             func_80837948(play, this, sp24);
