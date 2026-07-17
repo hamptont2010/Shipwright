@@ -2759,7 +2759,7 @@ s32 func_80834758(PlayState* play, Player* this) {
         LinkAnimation_Change(play, &this->upperSkelAnime, anim, 1.0f, frame, frame, ANIMMODE_ONCE, 0.0f);
         Player_PlaySfx(this, NA_SE_IT_SHIELD_POSTURE);
 
-        this->deflectTimer = 20;
+        this->deflectTimer = 9;
 
         return 1;
     } else {
@@ -16363,7 +16363,8 @@ void func_8085283C(PlayState* play, Player* this, CsCmdActorCue* cue) {
 void func_808528C8(PlayState* play, Player* this, CsCmdActorCue* cue) {
     s32 animFinished;
 
-    if (this->csAction == PLAYER_CSACTION_97) {
+    if ((this->csAction == PLAYER_CSACTION_97) &&
+        Sekiro_IsDeathblowActive()) {
         if (Sekiro_UpdateDeathblow(play, this)) {
             return;
         }
@@ -16371,7 +16372,12 @@ void func_808528C8(PlayState* play, Player* this, CsCmdActorCue* cue) {
         animFinished = LinkAnimation_Update(play, &this->skelAnime);
 
         if (animFinished) {
-            func_8084285C(this, 0.0f, 99.0f, this->skelAnime.endFrame - 8.0f);
+            func_8084285C(
+                this,
+                0.0f,
+                99.0f,
+                this->skelAnime.endFrame - 8.0f
+            );
         }
     }
 

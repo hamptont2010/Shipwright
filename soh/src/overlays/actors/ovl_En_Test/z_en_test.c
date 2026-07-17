@@ -407,7 +407,7 @@ void EnTest_ChooseAction(EnTest* this, PlayState* play) {
             }
         } else {
             if (this->actor.xzDistToPlayer < 110.0f) {
-                if (Rand_ZeroOne() > 0.2f) {
+                if (Rand_ZeroOne() > 0.1f) {
                     if (player->stateFlags1 & PLAYER_STATE1_HOSTILE_LOCK_ON) {
                         if (this->actor.isTargeted) {
                             EnTest_SetupSlashDown(this);
@@ -482,7 +482,7 @@ void EnTest_WaitAbove(EnTest* this, PlayState* play) {
 void EnTest_SetupIdle(EnTest* this) {
     Animation_PlayLoop(&this->skelAnime, &gStalfosMiddleGuardAnim);
     this->unk_7C8 = 0xA;
-    this->timer = (Rand_ZeroOne() * 10.0f) + 5.0f;
+    this->timer = (Rand_ZeroOne() * 4.0f) + 2.0f;
     this->actor.speedXZ = 0.0f;
     this->actor.world.rot.y = this->actor.shape.rot.y;
     EnTest_SetupAction(this, EnTest_Idle);
@@ -555,7 +555,7 @@ void EnTest_Fall(EnTest* this, PlayState* play) {
 void EnTest_Land(EnTest* this, PlayState* play) {
     if (SkelAnime_Update(&this->skelAnime)) {
         EnTest_SetupIdle(this);
-        this->timer = (Rand_ZeroOne() * 10.0f) + 5.0f;
+        this->timer = (Rand_ZeroOne() * 4.0f) + 2.0f;
     }
 }
 
@@ -588,13 +588,13 @@ void EnTest_WalkAndBlock(EnTest* this, PlayState* play) {
         }
 
         if (this->actor.xzDistToPlayer <= (80.0f + checkDist)) {
-            Math_SmoothStepToF(&this->actor.speedXZ, -5.0f, 1.0f, 0.8f, 0.0f);
+            Math_SmoothStepToF(&this->actor.speedXZ, -6.0f, 1.0f, 0.8f, 0.0f);
         } else if (this->actor.xzDistToPlayer > (110.0f + checkDist)) {
-            Math_SmoothStepToF(&this->actor.speedXZ, 5.0f, 1.0f, 0.8f, 0.0f);
+            Math_SmoothStepToF(&this->actor.speedXZ, 6.0f, 1.0f, 0.8f, 0.0f);
         }
 
-        if (this->actor.speedXZ >= 5.0f) {
-            this->actor.speedXZ = 5.0f;
+        if (this->actor.speedXZ >= 6.0f) {
+            this->actor.speedXZ = 6.0;
         } else if (this->actor.speedXZ < -5.0f) {
             this->actor.speedXZ = -5.0f;
         }
@@ -693,7 +693,7 @@ void EnTest_WalkAndBlock(EnTest* this, PlayState* play) {
         }
 
         if (this->actor.xzDistToPlayer < 110.0f) {
-            if (Rand_ZeroOne() > 0.2f) {
+            if (Rand_ZeroOne() > 0.1f) {
                 if (player->stateFlags1 & PLAYER_STATE1_HOSTILE_LOCK_ON) {
                     if (this->actor.isTargeted) {
                         EnTest_SetupSlashDown(this);

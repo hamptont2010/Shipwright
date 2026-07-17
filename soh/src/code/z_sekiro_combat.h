@@ -13,6 +13,7 @@ void Sekiro_PlayDeathblowSwing(void);
 void Sekiro_StartDeathblowFinisher(PlayState* play, Player* player);
 s32 Sekiro_UpdateDeathblow(PlayState* play, Player* player);
 s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player);
+s32 Sekiro_IsDeathblowActive(void);
 
 typedef enum {
     SEKIRO_IMPACT_NONE,

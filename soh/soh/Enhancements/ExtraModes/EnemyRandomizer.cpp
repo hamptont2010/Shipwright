@@ -819,8 +819,8 @@ void RegisterEnemyRandomizer() {
                 actorCtx,
                 play,
                 actorEntry,
-                ACTOR_EN_IK,
-                0x3F02
+                ACTOR_EN_TEST,
+                2
             );
 
             if (*actor == nullptr) {

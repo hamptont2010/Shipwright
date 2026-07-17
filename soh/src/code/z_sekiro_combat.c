@@ -9,6 +9,12 @@
 
 s32 Sekiro_UpdateDeathblowFlipTest(PlayState* play, Player* player);
 
+static s32 sDeathblowActive = false;
+
+s32 Sekiro_IsDeathblowActive(void) {
+    return sDeathblowActive;
+}
+
 void Sekiro_PlayerAction_DeathblowFlip(
     Player* player,
     PlayState* play
@@ -101,10 +107,10 @@ u8 Sekiro_GetPostureThreshold(Actor* enemy) {
 
     switch (enemy->id) {
         case ACTOR_EN_DEKUBABA:
-            return 2;
+            return 1;
 
         case ACTOR_EN_TEST:
-            return 2;
+            return 4;
 
         case ACTOR_EN_ZF:
             return 3;
@@ -113,10 +119,10 @@ u8 Sekiro_GetPostureThreshold(Actor* enemy) {
             return 3;
 
         case ACTOR_EN_GELDB:
-            return 2;
+            return 4;
 
         case ACTOR_EN_IK:
-            return 2;
+            return 4;
 
         default:
             return 3;
@@ -334,12 +340,14 @@ s32 Sekiro_UpdateDeathblow(PlayState* play, Player* player) {
 
     // Hand off into the genuine native stab
     if (LinkAnimation_OnFrame(&player->skelAnime, 46.0f)) {
+        sDeathblowActive = false;
         Sekiro_StartDeathblowFinisher(play, player);
         return true;
     }
 
     // Safety fallback if the cinematic reaches its natural end
     if (animFinished) {
+        sDeathblowActive = false;
         Player_SetCsAction(play, NULL, PLAYER_CSACTION_7);
         return true;
     }
@@ -471,6 +479,56 @@ s32 Sekiro_UpdateDeathblowFlipTest(
     return 1;
 }
 
+s32 Sekiro_IsDeathblowFlipPathClear(
+    PlayState* play,
+    Vec3f* startPos,
+    Vec3f* endPos
+) {
+    Vec3f lineStart = *startPos;
+    Vec3f lineEnd = *endPos;
+    Vec3f hitPos;
+    CollisionPoly* hitPoly = NULL;
+    s32 bgId = BGCHECK_SCENE;
+
+    /*
+     * Raise the test above the floor.
+     *
+     * Testing directly at Link's feet risks the line touching floor
+     * geometry instead of detecting only an obstructing wall.
+     */
+    lineStart.y += 30.0f;
+    lineEnd.y += 30.0f;
+
+    /*
+     * Check the entire horizontal route from the launch point to the
+     * landing point.
+     *
+     * Parameters after hitPoly:
+     *     checkOneFace
+     *     checkWall
+     *     checkFloor
+     *     checkCeiling
+     *
+     * We care about walls here, not floors or ceilings.
+     */
+    if (BgCheck_EntityLineTest1(
+            &play->colCtx,
+            &lineStart,
+            &lineEnd,
+            &hitPos,
+            &hitPoly,
+            true,
+            true,
+            false,
+            false,
+            &bgId
+        )) {
+        return false;
+    }
+
+    return true;
+}
+
 s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
     Actor* target = player->brokenTarget;
     Vec3f frontPos;
@@ -481,9 +539,12 @@ s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
     f32 sinYaw;
     f32 cosYaw;
     s16 yawToTarget;
+    s32 flipPathClear;
 
     // There is no valid posture-broken target.
     if ((target == NULL) || (target->update == NULL)) {
+        sDeathblowActive = false;
+        Player_SetCsAction(play, NULL, PLAYER_CSACTION_7);
         return 0;
     }
 
@@ -528,10 +589,25 @@ s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
      * exact point behind the enemy.
      */
     if (frontDistSq <= backDistSq) {
+        /*
+        * Make sure there is no wall between the flip's launch and
+        * landing positions.
+        */
+        flipPathClear = Sekiro_IsDeathblowFlipPathClear(
+            play,
+            &frontPos,
+            &backPos
+        );
+
+        /*
+        * Snap Link to the front launch point.
+        */
         player->actor.world.pos.x = frontPos.x;
         player->actor.world.pos.z = frontPos.z;
 
-        // Face Link toward the enemy before starting the flip.
+        /*
+        * Face Link toward the enemy.
+        */
         yawToTarget =
             Math_Vec3f_Yaw(&player->actor.world.pos, &target->world.pos);
 
@@ -539,7 +615,9 @@ s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
         player->actor.world.rot.y = yawToTarget;
         player->yaw = yawToTarget;
 
-        // Remove any movement that could distort the scripted arc.
+        /*
+        * Remove normal movement before either the flip or fallback stab.
+        */
         player->linearVelocity = 0.0f;
         player->actor.speedXZ = 0.0f;
         player->actor.velocity.x = 0.0f;
@@ -547,12 +625,17 @@ s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
         player->actor.velocity.z = 0.0f;
 
         /*
-         * Because Link has already been snapped to frontPos,
-         * Sekiro_StartDeathblowFlipTest() will capture frontPos as
-         * its startPos.
-         *
-         * backPos becomes the scripted landing point.
-         */
+        * A wall blocks the route behind the enemy.
+        * Skip the flip and stab from the front.
+        */
+        if (!flipPathClear) {
+            Sekiro_StartDeathblowFinisher(play, player);
+            return 1;
+        }
+
+        /*
+        * The route is clear.
+        */
         Sekiro_StartDeathblowFlipTest(
             play,
             player,
@@ -587,6 +670,8 @@ s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
     player->actor.velocity.x = 0.0f;
     player->actor.velocity.y = 0.0f;
     player->actor.velocity.z = 0.0f;
+
+    sDeathblowActive = true;
 
     Player_SetCsActionWithHaltedActors(
         play,
