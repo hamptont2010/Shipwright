@@ -6342,6 +6342,15 @@ s32 func_8083BBA0(Player* this, PlayState* play) {
     return 0;
 }
 
+void Player_PlaySekiroRoll(Player* this, PlayState* play) {
+    LinkAnimation_PlayOnceSetSpeed(
+        play,
+        &this->skelAnime,
+        GET_PLAYER_ANIM(PLAYER_ANIMGROUP_landing_roll, this->modelAnimType),
+        1.25f
+    );
+}
+
 void Player_SetupRoll(Player* this, PlayState* play) {
     Player_SetupAction(play, this, Player_Action_Roll, 0);
     LinkAnimation_PlayOnceSetSpeed(play, &this->skelAnime,

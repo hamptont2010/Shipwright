@@ -7,6 +7,31 @@
 #include "overlays/actors/ovl_En_GeldB/z_en_geldb.h"
 #include "overlays/actors/ovl_En_Ik/z_en_ik.h"
 
+s32 Sekiro_UpdateDeathblowFlipTest(PlayState* play, Player* player);
+
+void Sekiro_PlayerAction_DeathblowFlip(
+    Player* player,
+    PlayState* play
+);
+
+void Player_FinishSekiroFlip(
+    Player* player,
+    PlayState* play
+);
+
+void Player_FinishSekiroFlip(
+    Player* this,
+    PlayState* play
+) {
+    Player_SetCsActionWithHaltedActors(
+        play,
+        &this->actor,
+        PLAYER_CSACTION_97
+    );
+}
+
+void Player_PlaySekiroRoll(Player* player, PlayState* play);
+
 extern int gMapLoading;
 
 Actor* Sekiro_SpawnEnemy(
@@ -97,6 +122,17 @@ u8 Sekiro_GetPostureThreshold(Actor* enemy) {
             return 3;
     }
 }
+
+typedef struct {
+    s32 active;
+    s32 timer;
+    Actor* target;
+    Vec3f startPos;
+    Vec3f endPos;
+    f32 previousGravity;
+} SekiroFlipTestState;
+
+static SekiroFlipTestState sFlipTest;
 
 void Sekiro_LogDeflect(
     s16 actorId,
@@ -311,6 +347,130 @@ s32 Sekiro_UpdateDeathblow(PlayState* play, Player* player) {
     return false;
 }
 
+void Sekiro_PlayerAction_DeathblowFlip(Player* player, PlayState* play) {
+    Sekiro_UpdateDeathblowFlipTest(play, player);
+}
+
+void Sekiro_StartDeathblowFlipTest(
+    PlayState* play,
+    Player* player,
+    Actor* target,
+    Vec3f* frontPos
+) {
+    sFlipTest.active = 1;
+    sFlipTest.timer = 0;
+    sFlipTest.target = target;
+    sFlipTest.startPos = player->actor.world.pos;
+    sFlipTest.endPos = *frontPos;
+    sFlipTest.endPos.y = player->actor.world.pos.y;
+    sFlipTest.previousGravity = player->actor.gravity;
+
+    player->linearVelocity = 0.0f;
+    player->actor.speedXZ = 0.0f;
+    player->actor.velocity.x = 0.0f;
+    player->actor.velocity.y = 0.0f;
+    player->actor.velocity.z = 0.0f;
+    player->actor.gravity = 0.0f;
+    player->actor.bgCheckFlags &= ~1;
+    player->stateFlags3 |= PLAYER_STATE3_MIDAIR;
+
+    Player_SetupAction(
+        play,
+        player,
+        Sekiro_PlayerAction_DeathblowFlip,
+        0
+    );
+
+    Player_PlaySekiroRoll(player, play);
+
+}
+
+s32 Sekiro_UpdateDeathblowFlipTest(
+    PlayState* play,
+    Player* player
+) {
+    f32 t;
+    f32 height;
+
+    if (!sFlipTest.active) {
+        return 0;
+    }
+
+    if ((sFlipTest.target == NULL) ||
+        (sFlipTest.target->update == NULL)) {
+        player->actor.gravity = sFlipTest.previousGravity;
+        player->actor.velocity.y = 0.0f;
+        player->stateFlags3 &= ~PLAYER_STATE3_MIDAIR;
+
+        sFlipTest.active = 0;
+        Player_SetCsAction(play, NULL, PLAYER_CSACTION_7);
+        return 0;
+    }
+
+    LinkAnimation_Update(play, &player->skelAnime);
+
+    sFlipTest.timer++;
+
+    t = sFlipTest.timer / 20.0f;
+    s16 arcAngle;
+
+    if (t > 1.0f) {
+        t = 1.0f;
+    }
+
+    player->actor.gravity = 0.0f;
+    player->actor.velocity.y = 0.0f;
+    player->actor.bgCheckFlags &= ~1;
+    player->stateFlags3 |= PLAYER_STATE3_MIDAIR;
+
+    player->actor.world.pos.x =
+        sFlipTest.startPos.x +
+        ((sFlipTest.endPos.x - sFlipTest.startPos.x) * t);
+
+    player->actor.world.pos.z =
+        sFlipTest.startPos.z +
+        ((sFlipTest.endPos.z - sFlipTest.startPos.z) * t);
+
+    height = Math_SinS((s16)(t * 0x8000)) * 80.0f;
+    
+    player->actor.world.pos.y =
+        sFlipTest.startPos.y + height;
+
+    player->actor.shape.rot.y =
+        Math_Vec3f_Yaw(
+            &player->actor.world.pos,
+            &sFlipTest.target->world.pos
+        );
+
+    player->actor.world.rot.y = player->actor.shape.rot.y;
+    player->yaw = player->actor.shape.rot.y;
+
+    if (sFlipTest.timer >= 20) {
+        s16 yawToTarget;
+
+        player->actor.world.pos = sFlipTest.endPos;
+
+        player->actor.gravity = sFlipTest.previousGravity;
+        player->actor.velocity.y = 0.0f;
+        player->stateFlags3 &= ~PLAYER_STATE3_MIDAIR;
+
+        yawToTarget = Math_Vec3f_Yaw(
+            &player->actor.world.pos,
+            &sFlipTest.target->world.pos
+        );
+
+        player->actor.shape.rot.y = yawToTarget;
+        player->actor.world.rot.y = yawToTarget;
+        player->yaw = yawToTarget;
+
+        sFlipTest.active = 0;
+
+        Sekiro_StartDeathblowFinisher(play, player);
+        return 1;
+    }
+    return 1;
+}
+
 s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
     Actor* target = player->brokenTarget;
     Vec3f frontPos;
@@ -361,18 +521,57 @@ s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
         SQ(player->actor.world.pos.z - backPos.z);
 
     /*
-     * Snap Link to the nearer point.
+     * FRONT CASE:
      *
-     * Preserve Link's current Y position for now so we don't
-     * accidentally teleport him vertically through floors.
+     * Link is closer to the enemy's front.
+     * Snap him to the exact launch point first, then flip to the
+     * exact point behind the enemy.
      */
     if (frontDistSq <= backDistSq) {
         player->actor.world.pos.x = frontPos.x;
         player->actor.world.pos.z = frontPos.z;
-    } else {
-        player->actor.world.pos.x = backPos.x;
-        player->actor.world.pos.z = backPos.z;
+
+        // Face Link toward the enemy before starting the flip.
+        yawToTarget =
+            Math_Vec3f_Yaw(&player->actor.world.pos, &target->world.pos);
+
+        player->actor.shape.rot.y = yawToTarget;
+        player->actor.world.rot.y = yawToTarget;
+        player->yaw = yawToTarget;
+
+        // Remove any movement that could distort the scripted arc.
+        player->linearVelocity = 0.0f;
+        player->actor.speedXZ = 0.0f;
+        player->actor.velocity.x = 0.0f;
+        player->actor.velocity.y = 0.0f;
+        player->actor.velocity.z = 0.0f;
+
+        /*
+         * Because Link has already been snapped to frontPos,
+         * Sekiro_StartDeathblowFlipTest() will capture frontPos as
+         * its startPos.
+         *
+         * backPos becomes the scripted landing point.
+         */
+        Sekiro_StartDeathblowFlipTest(
+            play,
+            player,
+            target,
+            &backPos
+        );
+
+        return 1;
     }
+
+    /*
+     * BACK CASE:
+     *
+     * Link is already behind the enemy.
+     * Snap him to the exact rear point and start the normal
+     * cinematic deathblow.
+     */
+    player->actor.world.pos.x = backPos.x;
+    player->actor.world.pos.z = backPos.z;
 
     // Face Link directly toward the target.
     yawToTarget =
@@ -386,6 +585,7 @@ s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
     player->linearVelocity = 0.0f;
     player->actor.speedXZ = 0.0f;
     player->actor.velocity.x = 0.0f;
+    player->actor.velocity.y = 0.0f;
     player->actor.velocity.z = 0.0f;
 
     Player_SetCsActionWithHaltedActors(
