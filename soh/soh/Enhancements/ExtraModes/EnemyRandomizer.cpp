@@ -93,6 +93,11 @@ typedef struct EnemyEntry {
     s16 params;
 } EnemyEntry;
 
+static s32 sSekiroTestEnemyIndex = 0;
+static Actor* sSekiroTestEnemy = nullptr;
+static ActorEntry sSekiroTestSpawnEntry;
+static bool sSekiroTestSpawnReady = false;
+
 // clang-format off
 static EnemyEntry randomizedEnemySpawnTable[] = {
     { CVAR_ENHANCEMENT("RandomizedEnemyList.Anubis"),           "Anubis",                ACTOR_EN_ANUBICE_TAG,                        1 }, // Anubis
@@ -701,8 +706,117 @@ void CustomPeehatLarvaDestroy(Actor* thisx, PlayState* play) {
     ObjectExtension::GetInstance().Remove<CustomPeehatLarvaData>(thisx);
 }
 
+typedef struct {
+    s16 actorId;
+    s16 params;
+    const char* name;
+} SekiroTestEnemyEntry;
+
+static SekiroTestEnemyEntry sSekiroTestEnemies[] = {
+    { ACTOR_EN_TEST,     2, "Stalfos" },
+    { ACTOR_EN_ZF,       0, "Lizalfos" },
+    { ACTOR_EN_WF,       0, "Wolfos" },
+    { ACTOR_EN_GELDB,    0, "Gerudo Fighter" },
+    { ACTOR_EN_IK,       0, "Iron Knuckle" },
+    { ACTOR_EN_DEKUBABA, 0, "Deku Baba" },
+};
+
+static void Sekiro_ActivateTestEnemy(Actor* actor, PlayState* play) {
+    if (actor == nullptr) {
+        return;
+    }
+
+    switch (actor->id) {
+        case ACTOR_EN_IK:
+            EnIk_ActivateImmediately((EnIk*)actor);
+            break;
+
+        case ACTOR_EN_GELDB:
+            /* Add Gerudo-specific activation here if still needed. */
+            break;
+
+        default:
+            break;
+    }
+}
+
+static void Sekiro_SpawnSelectedTestEnemy(PlayState* play) {
+    SekiroTestEnemyEntry* testEnemy =
+        &sSekiroTestEnemies[sSekiroTestEnemyIndex];
+
+    if ((sSekiroTestEnemy != nullptr) &&
+        (sSekiroTestEnemy->update != nullptr)) {
+        Actor_Kill(sSekiroTestEnemy);
+    }
+
+    sSekiroTestEnemy = Sekiro_SpawnEnemyFromActorEntry(
+        &play->actorCtx,
+        play,
+        &sSekiroTestSpawnEntry,
+        testEnemy->actorId,
+        testEnemy->params
+    );
+
+    if (sSekiroTestEnemy == nullptr) {
+        SPDLOG_ERROR(
+            "Sekiro: failed to cycle to test enemy {}.",
+            testEnemy->name
+        );
+        return;
+    }
+
+    Sekiro_ActivateTestEnemy(sSekiroTestEnemy, play);
+
+    SPDLOG_INFO(
+        "Sekiro test enemy: {}",
+        testEnemy->name
+    );
+}
+
+static void Sekiro_UpdateTestEnemyCycler(PlayState* play) {
+    Input* input = &play->state.input[0];
+    s32 enemyCount =
+        sizeof(sSekiroTestEnemies) / sizeof(sSekiroTestEnemies[0]);
+
+    if (play->sceneNum != SCENE_DEKU_TREE ||
+        play->roomCtx.curRoom.num != 1 ||
+        !sSekiroTestSpawnReady) {
+        return;
+    }
+
+    if (CHECK_BTN_ALL(input->press.button, BTN_DRIGHT)) {
+        sSekiroTestEnemyIndex++;
+
+        if (sSekiroTestEnemyIndex >= enemyCount) {
+            sSekiroTestEnemyIndex = 0;
+        }
+
+        Sekiro_SpawnSelectedTestEnemy(play);
+    }
+
+    if (CHECK_BTN_ALL(input->press.button, BTN_DLEFT)) {
+        sSekiroTestEnemyIndex--;
+
+        if (sSekiroTestEnemyIndex < 0) {
+            sSekiroTestEnemyIndex = enemyCount - 1;
+        }
+
+        Sekiro_SpawnSelectedTestEnemy(play);
+    }
+}
+
+static void OnGameFrameUpdateSekiroTestEnemyCycler() {
+    if (!GameInteractor::IsSaveLoaded(true) || gPlayState == nullptr) {
+        return;
+    }
+
+    Sekiro_UpdateTestEnemyCycler(gPlayState);
+}
+
 void RegisterEnemyRandomizer() {
     COND_ID_HOOK(OnActorInit, ACTOR_EN_MB, ENEMY_RANDOMIZER_ENABLED, FixClubMoblinScale);
+
+    COND_HOOK(OnGameFrameUpdate, true, OnGameFrameUpdateSekiroTestEnemyCycler);
 
     // prevent dark link from triggering a voidout
     COND_VB_SHOULD(VB_TRIGGER_VOIDOUT, ENEMY_RANDOMIZER_ENABLED, {
@@ -800,34 +914,44 @@ void RegisterEnemyRandomizer() {
         PlayState* play = va_arg(args, PlayState*);
         Actor** actor = va_arg(args, Actor**);
 
-        SPDLOG_INFO(
-            "Sekiro Hook: scene={}, room={}, actor={}, params={}",
-            play->sceneNum,
-            play->roomCtx.curRoom.num,
-            actorEntry->id,
-            actorEntry->params
-        );
-
         if (play->sceneNum == SCENE_DEKU_TREE &&
             play->roomCtx.curRoom.num == 1 &&
             actorEntry->id == ACTOR_EN_HINTNUTS &&
             actorEntry->params == 6656) {
 
+            SekiroTestEnemyEntry* testEnemy =
+                &sSekiroTestEnemies[sSekiroTestEnemyIndex];
+
             *should = false;
+
+            /*
+            * Preserve this actor entry as the reusable test spawn point.
+            */
+            sSekiroTestSpawnEntry = *actorEntry;
+            sSekiroTestSpawnReady = true;
 
             *actor = Sekiro_SpawnEnemyFromActorEntry(
                 actorCtx,
                 play,
                 actorEntry,
-                ACTOR_EN_TEST,
-                2
+                testEnemy->actorId,
+                testEnemy->params
             );
 
+            sSekiroTestEnemy = *actor;
+
             if (*actor == nullptr) {
-                SPDLOG_ERROR("Sekiro: failed to spawn Iron Knuckle.");
+                SPDLOG_ERROR(
+                    "Sekiro: failed to spawn test enemy {}.",
+                    testEnemy->name
+                );
             } else {
-                EnIk_ActivateImmediately((EnIk*)*actor);
-                SPDLOG_INFO("Sekiro: Iron Knuckle spawned and activated.");
+                Sekiro_ActivateTestEnemy(*actor, play);
+
+                SPDLOG_INFO(
+                    "Sekiro: spawned test enemy {}.",
+                    testEnemy->name
+                );
             }
         }
     });
