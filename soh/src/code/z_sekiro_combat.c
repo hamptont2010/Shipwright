@@ -177,6 +177,116 @@ s32 Sekiro_UpdateDeathblowOrbit(
     Player* player
 );
 
+s32 Sekiro_IsDeathblowOrbitPathClear(
+    PlayState* play,
+    Actor* target,
+    Vec3f* startPos,
+    f32 radius,
+    s16 startYaw,
+    s16 yawDelta
+) {
+    Vec3f previousPos;
+    Vec3f nextPos;
+    Vec3f hitPos;
+    Vec3f floorCheckPos;
+
+    CollisionPoly* hitPoly = NULL;
+    CollisionPoly* floorPoly = NULL;
+
+    s32 bgId = BGCHECK_SCENE;
+    s32 floorBgId = BGCHECK_SCENE;
+    s32 i;
+
+    f32 t;
+    f32 previousFloorY;
+    f32 floorY;
+
+    s16 orbitYaw;
+
+    previousPos = *startPos;
+    previousPos.y += 30.0f;
+
+    floorCheckPos = *startPos;
+    floorCheckPos.y += 100.0f;
+
+    previousFloorY = BgCheck_EntityRaycastFloor3(
+        &play->colCtx,
+        &floorPoly,
+        &floorBgId,
+        &floorCheckPos
+    );
+
+    if (previousFloorY == BGCHECK_Y_MIN) {
+        return false;
+    }
+
+    /*
+     * Break the semicircle into six short wall-test segments.
+     */
+    for (i = 1; i <= 6; i++) {
+        t = i / 6.0f;
+
+        orbitYaw =
+            startYaw +
+            (s16)(yawDelta * t);
+
+        nextPos.x =
+            target->world.pos.x +
+            (Math_SinS(orbitYaw) * radius);
+
+        nextPos.y = startPos->y + 30.0f;
+
+        nextPos.z =
+            target->world.pos.z +
+            (Math_CosS(orbitYaw) * radius);
+
+        floorCheckPos = nextPos;
+        floorCheckPos.y = startPos->y + 100.0f;
+
+        floorPoly = NULL;
+        floorBgId = BGCHECK_SCENE;
+
+        floorY = BgCheck_EntityRaycastFloor3(
+            &play->colCtx,
+            &floorPoly,
+            &floorBgId,
+            &floorCheckPos
+        );
+
+        if (floorY == BGCHECK_Y_MIN) {
+            return false;
+        }
+
+        if (fabsf(floorY - previousFloorY) > 40.0f) {
+            return false;
+        }
+
+        previousFloorY = floorY;
+
+        hitPoly = NULL;
+        bgId = BGCHECK_SCENE;
+
+        if (BgCheck_EntityLineTest1(
+                &play->colCtx,
+                &previousPos,
+                &nextPos,
+                &hitPos,
+                &hitPoly,
+                true,
+                true,
+                false,
+                false,
+                &bgId
+            )) {
+            return false;
+        }
+
+        previousPos = nextPos;
+    }
+
+    return true;
+}
+
 void Sekiro_LogDeflect(
     s16 actorId,
     s16 colorTimer,
@@ -510,13 +620,15 @@ void Sekiro_PlayerAction_DeathblowOrbit(
     Sekiro_UpdateDeathblowOrbit(play, player);
 }
 
-void Sekiro_StartDeathblowOrbit(
+s32 Sekiro_StartDeathblowOrbit(
     PlayState* play,
     Player* player,
     Actor* target
 ) {
     f32 dx;
     f32 dz;
+    s32 clockwiseClear;
+    s32 counterClockwiseClear;
 
     sOrbit.active = true;
     sOrbit.timer = 0;
@@ -543,7 +655,42 @@ void Sekiro_StartDeathblowOrbit(
     /*
      * For the first test, always travel clockwise by 180 degrees.
      */
-    sOrbit.yawDelta = 0x8000;
+    clockwiseClear = Sekiro_IsDeathblowOrbitPathClear(
+        play,
+        target,
+        &player->actor.world.pos,
+        sOrbit.radius,
+        sOrbit.startYaw,
+        0x8000
+    );
+
+    counterClockwiseClear = Sekiro_IsDeathblowOrbitPathClear(
+        play,
+        target,
+        &player->actor.world.pos,
+        sOrbit.radius,
+        sOrbit.startYaw,
+        -0x8000
+    );
+
+    if (clockwiseClear && counterClockwiseClear) {
+        sOrbit.yawDelta =
+            (Rand_ZeroOne() < 0.5f)
+                ? 0x8000
+                : -0x8000;
+    } else if (clockwiseClear) {
+        sOrbit.yawDelta = 0x8000;
+    } else if (counterClockwiseClear) {
+        sOrbit.yawDelta = -0x8000;
+    } else {
+        sOrbit.active = false;
+
+        osSyncPrintf(
+            "SEKIRO: orbit blocked both directions\n"
+        );
+
+        return 0;
+    }
 
     player->linearVelocity = 0.0f;
     player->actor.speedXZ = 0.0f;
@@ -564,6 +711,8 @@ void Sekiro_StartDeathblowOrbit(
         "SEKIRO: orbit selected finisher=%d\n",
         sOrbit.finisher
     );
+
+    return 1;
 }
 
 void Sekiro_StartDeathblowFlipTest(
@@ -797,6 +946,71 @@ s32 Sekiro_UpdateDeathblowOrbit(
     return 1;
 }
 
+s32 Sekiro_IsDeathblowLandingSafe(
+    PlayState* play,
+    Vec3f* startPos,
+    Vec3f* landingPos
+) {
+    Vec3f startCheckPos;
+    Vec3f landingCheckPos;
+    CollisionPoly* floorPoly = NULL;
+    s32 bgId = BGCHECK_SCENE;
+    f32 startFloorY;
+    f32 landingFloorY;
+
+    /*
+     * Start the raycasts above the expected floor.
+     */
+    startCheckPos = *startPos;
+    startCheckPos.y += 100.0f;
+
+    landingCheckPos = *landingPos;
+    landingCheckPos.y += 100.0f;
+
+    /*
+     * Find the floor beneath the launch point.
+     */
+    startFloorY = BgCheck_EntityRaycastFloor3(
+        &play->colCtx,
+        &floorPoly,
+        &bgId,
+        &startCheckPos
+    );
+
+    if (startFloorY == BGCHECK_Y_MIN) {
+        return false;
+    }
+
+    /*
+     * Reset the output variables before checking the landing point.
+     */
+    floorPoly = NULL;
+    bgId = BGCHECK_SCENE;
+
+    /*
+     * Find the floor beneath the landing point.
+     */
+    landingFloorY = BgCheck_EntityRaycastFloor3(
+        &play->colCtx,
+        &floorPoly,
+        &bgId,
+        &landingCheckPos
+    );
+
+    if (landingFloorY == BGCHECK_Y_MIN) {
+        return false;
+    }
+
+    /*
+     * Reject a landing that is much higher or lower than the launch.
+     */
+    if (fabsf(landingFloorY - startFloorY) > 40.0f) {
+        return false;
+    }
+
+    return true;
+}
+
 s32 Sekiro_IsDeathblowFlipPathClear(
     PlayState* play,
     Vec3f* startPos,
@@ -872,7 +1086,7 @@ s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
     Vec3f backPos;
     f32 frontDistSq;
     f32 backDistSq;
-    f32 snapDistance = LINK_IS_CHILD ? 50.0f : 70.0f;
+    f32 snapDistance = LINK_IS_CHILD ? 45.0f : 65.0f;
     f32 sinYaw;
     f32 cosYaw;
     s16 yawToTarget;
@@ -936,6 +1150,14 @@ s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
             &backPos
         );
 
+        if (!Sekiro_IsDeathblowLandingSafe(
+                play,
+                &frontPos,
+                &backPos
+            )) {
+            flipPathClear = false;
+        }
+
         /*
         * Snap Link to the front launch point.
         */
@@ -974,25 +1196,22 @@ s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
         * The route is clear.
         */
         if (Rand_ZeroOne() < 0.5f) {
-            osSyncPrintf(
-                "SEKIRO: front entry=aerial flip\n"
-            );
-
             Sekiro_StartDeathblowFlipTest(
                 play,
                 player,
                 target,
                 &backPos
             );
-        } else {
-            osSyncPrintf(
-                "SEKIRO: front entry=ground orbit\n"
-            );
-
-            Sekiro_StartDeathblowOrbit(
+        } else if (!Sekiro_StartDeathblowOrbit(
+                    play,
+                    player,
+                    target
+                )) {
+            Sekiro_StartDeathblowFlipTest(
                 play,
                 player,
-                target
+                target,
+                &backPos
             );
         }
 
@@ -1044,6 +1263,14 @@ s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
         &backPos,
         &frontPos
     );
+
+    if (!Sekiro_IsDeathblowLandingSafe(
+            play,
+            &backPos,
+            &frontPos
+        )) {
+        flipPathClear = false;
+    }
 
     /*
     * If the route is clear, randomly choose between the cinematic
