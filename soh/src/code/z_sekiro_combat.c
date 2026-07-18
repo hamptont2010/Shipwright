@@ -14,6 +14,9 @@ s32 Sekiro_UpdateDeathblowFlipTest(PlayState* play, Player* player);
 
 static s32 sDeathblowActive = false;
 
+static SekiroDeathblowFinisher sCinematicFinisher =
+    SEKIRO_FINISHER_STAB;
+
 s32 Sekiro_IsDeathblowActive(void) {
     return sDeathblowActive;
 }
@@ -148,6 +151,7 @@ typedef struct {
     Vec3f startPos;
     Vec3f endPos;
     f32 previousGravity;
+    SekiroDeathblowFinisher finisher;
 } SekiroFlipTestState;
 
 static SekiroFlipTestState sFlipTest;
@@ -321,9 +325,98 @@ void Sekiro_SpawnDeathblowImpact(PlayState* play, Actor* target, SekiroImpactTyp
     }
 }
 
-void Sekiro_StartDeathblowFinisher(PlayState* play, Player* player) {
+void Sekiro_StartDeathblowFinisher(
+    PlayState* play,
+    Player* player,
+    SekiroDeathblowFinisher finisher
+) {
+    s32 meleeAnimation;
+
+    switch (finisher) {
+        case SEKIRO_FINISHER_SPIN:
+            meleeAnimation = PLAYER_MWA_SPIN_ATTACK_1H;
+            break;
+
+        case SEKIRO_FINISHER_BACKSLASH_LEFT:
+            meleeAnimation = PLAYER_MWA_BACKSLASH_LEFT;
+            break;
+
+        case SEKIRO_FINISHER_BACKSLASH_RIGHT:
+            meleeAnimation = PLAYER_MWA_BACKSLASH_RIGHT;
+            break;
+
+        case SEKIRO_FINISHER_FLIPSLASH:
+            meleeAnimation = PLAYER_MWA_FLIPSLASH_FINISH;
+            break;
+
+        case SEKIRO_FINISHER_JUMPSLASH:
+            meleeAnimation = PLAYER_MWA_JUMPSLASH_FINISH;
+            break;
+
+        case SEKIRO_FINISHER_FORWARD_SLASH:
+            meleeAnimation = PLAYER_MWA_FORWARD_SLASH_1H;
+            break;
+
+        case SEKIRO_FINISHER_RIGHT_SLASH:
+            meleeAnimation = PLAYER_MWA_RIGHT_SLASH_1H;
+            break;
+
+        case SEKIRO_FINISHER_LEFT_SLASH:
+            meleeAnimation = PLAYER_MWA_LEFT_SLASH_1H;
+            break;
+
+        case SEKIRO_FINISHER_FORWARD_COMBO:
+            meleeAnimation = PLAYER_MWA_FORWARD_COMBO_1H;
+            break;
+
+        case SEKIRO_FINISHER_RIGHT_COMBO:
+            meleeAnimation = PLAYER_MWA_RIGHT_COMBO_1H;
+            break;
+
+        case SEKIRO_FINISHER_LEFT_COMBO:
+            meleeAnimation = PLAYER_MWA_LEFT_COMBO_1H;
+            break;
+
+        case SEKIRO_FINISHER_STAB_COMBO:
+            meleeAnimation = PLAYER_MWA_STAB_COMBO_1H;
+            break;
+
+        case SEKIRO_FINISHER_BIG_SPIN:
+            meleeAnimation = PLAYER_MWA_BIG_SPIN_1H;
+            break;
+
+        case SEKIRO_FINISHER_STAB:
+        default:
+            meleeAnimation = PLAYER_MWA_STAB_1H;
+            break;
+    }
+
     Player_SetCsAction(play, NULL, PLAYER_CSACTION_7);
-    func_80837948(play, player, PLAYER_MWA_STAB_1H);
+    func_80837948(play, player, meleeAnimation);
+}
+
+SekiroDeathblowFinisher Sekiro_GetRandomDeathblowFinisher(void) {
+    static const SekiroDeathblowFinisher sFinishers[] = {
+        SEKIRO_FINISHER_STAB,
+        SEKIRO_FINISHER_FLIPSLASH,
+        SEKIRO_FINISHER_FORWARD_SLASH,
+        SEKIRO_FINISHER_RIGHT_SLASH,
+        SEKIRO_FINISHER_LEFT_SLASH,
+        SEKIRO_FINISHER_RIGHT_COMBO,
+        SEKIRO_FINISHER_LEFT_COMBO,
+        SEKIRO_FINISHER_STAB_COMBO,
+    };
+
+    s32 finisherCount =
+        sizeof(sFinishers) / sizeof(sFinishers[0]);
+
+    s32 index = (s32)Rand_ZeroFloat((f32)finisherCount);
+
+    if (index >= finisherCount) {
+        index = finisherCount - 1;
+    }
+
+    return sFinishers[index];
 }
 
 s32 Sekiro_UpdateDeathblow(PlayState* play, Player* player) {
@@ -365,7 +458,13 @@ s32 Sekiro_UpdateDeathblow(PlayState* play, Player* player) {
     // Hand off into the genuine native stab
     if (LinkAnimation_OnFrame(&player->skelAnime, 46.0f)) {
         sDeathblowActive = false;
-        Sekiro_StartDeathblowFinisher(play, player);
+
+        Sekiro_StartDeathblowFinisher(
+            play,
+            player,
+            sCinematicFinisher
+        );
+    
         return true;
     }
 
@@ -405,6 +504,13 @@ void Sekiro_StartDeathblowFlipTest(
     player->actor.gravity = 0.0f;
     player->actor.bgCheckFlags &= ~1;
     player->stateFlags3 |= PLAYER_STATE3_MIDAIR;
+
+    sFlipTest.finisher = Sekiro_GetRandomDeathblowFinisher();
+
+    osSyncPrintf(
+        "SEKIRO: flip selected finisher=%d\n",
+        (s32)sFlipTest.finisher
+    );
 
     Player_SetupAction(
         play,
@@ -497,7 +603,11 @@ s32 Sekiro_UpdateDeathblowFlipTest(
 
         sFlipTest.active = 0;
 
-        Sekiro_StartDeathblowFinisher(play, player);
+        Sekiro_StartDeathblowFinisher(
+            play,
+            player,
+            sFlipTest.finisher
+        );
         return 1;
     }
     return 1;
@@ -558,6 +668,12 @@ void Sekiro_StartDeathblowCinematic(
     Player* player
 ) {
     sDeathblowActive = true;
+    sCinematicFinisher = Sekiro_GetRandomDeathblowFinisher();
+
+    osSyncPrintf(
+        "SEKIRO: cinematic selected finisher=%d\n",
+        (s32)sCinematicFinisher
+    );
 
     Player_SetCsActionWithHaltedActors(
         play,
