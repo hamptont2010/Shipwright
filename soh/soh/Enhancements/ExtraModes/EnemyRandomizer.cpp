@@ -97,6 +97,7 @@ static s32 sSekiroTestEnemyIndex = 0;
 static Actor* sSekiroTestEnemy = nullptr;
 static ActorEntry sSekiroTestSpawnEntry;
 static bool sSekiroTestSpawnReady = false;
+static bool sSekiroInitialEnemyActive = false;
 
 // clang-format off
 static EnemyEntry randomizedEnemySpawnTable[] = {
@@ -717,8 +718,13 @@ static SekiroTestEnemyEntry sSekiroTestEnemies[] = {
     { ACTOR_EN_ZF,       0, "Lizalfos" },
     { ACTOR_EN_WF,       0, "Wolfos" },
     { ACTOR_EN_GELDB,    0, "Gerudo Fighter" },
-    { ACTOR_EN_IK,       0, "Iron Knuckle" },
     { ACTOR_EN_DEKUBABA, 0, "Deku Baba" },
+};
+
+static const SekiroTestEnemyEntry sSekiroInitialEnemy = {
+    ACTOR_EN_IK,
+    static_cast<int16_t>(0xFF02),
+    "Iron Knuckle"
 };
 
 static void Sekiro_ActivateTestEnemy(Actor* actor, PlayState* play) {
@@ -765,6 +771,8 @@ static void Sekiro_SpawnSelectedTestEnemy(PlayState* play) {
         return;
     }
 
+    sSekiroInitialEnemyActive = false;
+
     Sekiro_ActivateTestEnemy(sSekiroTestEnemy, play);
 
     SPDLOG_INFO(
@@ -774,9 +782,9 @@ static void Sekiro_SpawnSelectedTestEnemy(PlayState* play) {
 }
 
 static void Sekiro_UpdateTestEnemyCycler(PlayState* play) {
-    Input* input = &play->state.input[0];
-    s32 enemyCount =
-        sizeof(sSekiroTestEnemies) / sizeof(sSekiroTestEnemies[0]);
+    if (play == nullptr) {
+        return;
+    }
 
     if (play->sceneNum != SCENE_DEKU_TREE ||
         play->roomCtx.curRoom.num != 1 ||
@@ -784,25 +792,63 @@ static void Sekiro_UpdateTestEnemyCycler(PlayState* play) {
         return;
     }
 
-    if (CHECK_BTN_ALL(input->press.button, BTN_DRIGHT)) {
-        sSekiroTestEnemyIndex++;
+    bool nextPressed =
+        CHECK_BTN_ALL(
+            play->state.input[0].press.button,
+            BTN_DRIGHT
+        );
 
-        if (sSekiroTestEnemyIndex >= enemyCount) {
+    bool previousPressed =
+        CHECK_BTN_ALL(
+            play->state.input[0].press.button,
+            BTN_DLEFT
+        );
+
+    if (!nextPressed && !previousPressed) {
+        return;
+    }
+
+    /*
+     * Iron Knuckle is the fixed initial enemy and is not contained
+     * in sSekiroTestEnemies.
+     *
+     * The first directional press enters the regular rotation:
+     *
+     * D-right -> first table entry
+     * D-left  -> last table entry
+     */
+    if (sSekiroInitialEnemyActive) {
+        if (nextPressed) {
             sSekiroTestEnemyIndex = 0;
+        } else {
+            sSekiroTestEnemyIndex =
+                ARRAY_COUNT(sSekiroTestEnemies) - 1;
         }
 
-        Sekiro_SpawnSelectedTestEnemy(play);
-    }
+        sSekiroInitialEnemyActive = false;
+    } else {
+        /*
+         * Once inside the regular table, move normally and wrap
+         * around at either end.
+         */
+        if (nextPressed) {
+            sSekiroTestEnemyIndex++;
 
-    if (CHECK_BTN_ALL(input->press.button, BTN_DLEFT)) {
-        sSekiroTestEnemyIndex--;
+            if (sSekiroTestEnemyIndex >=
+                ARRAY_COUNT(sSekiroTestEnemies)) {
+                sSekiroTestEnemyIndex = 0;
+            }
+        } else {
+            sSekiroTestEnemyIndex--;
 
-        if (sSekiroTestEnemyIndex < 0) {
-            sSekiroTestEnemyIndex = enemyCount - 1;
+            if (sSekiroTestEnemyIndex < 0) {
+                sSekiroTestEnemyIndex =
+                    ARRAY_COUNT(sSekiroTestEnemies) - 1;
+            }
         }
-
-        Sekiro_SpawnSelectedTestEnemy(play);
     }
+
+    Sekiro_SpawnSelectedTestEnemy(play);
 }
 
 static void OnGameFrameUpdateSekiroTestEnemyCycler() {
@@ -919,38 +965,56 @@ void RegisterEnemyRandomizer() {
             actorEntry->id == ACTOR_EN_HINTNUTS &&
             actorEntry->params == 6656) {
 
-            SekiroTestEnemyEntry* testEnemy =
-                &sSekiroTestEnemies[sSekiroTestEnemyIndex];
-
             *should = false;
 
             /*
-            * Preserve this actor entry as the reusable test spawn point.
+            * Preserve the original actor entry as the reusable spawn point
+            * for enemies in the selectable rotation.
             */
             sSekiroTestSpawnEntry = *actorEntry;
             sSekiroTestSpawnReady = true;
 
+            /*
+            * Iron Knuckle is the fixed initial enemy. It is deliberately
+            * excluded from the selectable rotation because respawning it
+            * depends on switch and room-clear state.
+            */
             *actor = Sekiro_SpawnEnemyFromActorEntry(
                 actorCtx,
                 play,
                 actorEntry,
-                testEnemy->actorId,
-                testEnemy->params
+                sSekiroInitialEnemy.actorId,
+                sSekiroInitialEnemy.params
             );
 
-            sSekiroTestEnemy = *actor;
-
             if (*actor == nullptr) {
+                sSekiroTestEnemy = nullptr;
+                sSekiroInitialEnemyActive = false;
+
                 SPDLOG_ERROR(
-                    "Sekiro: failed to spawn test enemy {}.",
-                    testEnemy->name
+                    "Sekiro: failed to spawn initial enemy {}.",
+                    sSekiroInitialEnemy.name
+                );
+            } else if ((*actor)->update == nullptr) {
+                /*
+                * Actor_Spawn returned an actor, but EnIk_Init killed it.
+                */
+                sSekiroTestEnemy = nullptr;
+                sSekiroInitialEnemyActive = false;
+
+                SPDLOG_ERROR(
+                    "Sekiro: initial enemy {} was removed during initialization.",
+                    sSekiroInitialEnemy.name
                 );
             } else {
+                sSekiroTestEnemy = *actor;
+                sSekiroInitialEnemyActive = true;
+
                 Sekiro_ActivateTestEnemy(*actor, play);
 
                 SPDLOG_INFO(
-                    "Sekiro: spawned test enemy {}.",
-                    testEnemy->name
+                    "Sekiro: spawned initial enemy {}.",
+                    sSekiroInitialEnemy.name
                 );
             }
         }
