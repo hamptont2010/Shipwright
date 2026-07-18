@@ -7,6 +7,8 @@
 #include "overlays/actors/ovl_En_GeldB/z_en_geldb.h"
 #include "overlays/actors/ovl_En_Ik/z_en_ik.h"
 #include "overlays/actors/ovl_En_Skb/z_en_skb.h"
+#include "overlays/actors/ovl_En_Tite/z_en_tite.h"
+#include "overlays/actors/ovl_En_Am/z_en_am.h"
 
 s32 Sekiro_UpdateDeathblowFlipTest(PlayState* play, Player* player);
 
@@ -128,6 +130,12 @@ u8 Sekiro_GetPostureThreshold(Actor* enemy) {
         case ACTOR_EN_SKB:
             return 2;
 
+        case ACTOR_EN_TITE:
+            return 3;
+
+        case ACTOR_EN_AM:
+            return 3;
+
         default:
             return 3;
     }
@@ -182,6 +190,14 @@ void Sekiro_ApplyPostureBreak(Actor* enemy, PlayState* play) {
 
         case ACTOR_EN_SKB:
             EnSkb_ApplyPostureBreak((EnSkb*)enemy);
+            break;
+
+        case ACTOR_EN_TITE:
+            EnTite_ApplyPostureBreak((EnTite*)enemy);
+            break;
+
+        case ACTOR_EN_AM:
+            EnAm_ApplyPostureBreak((EnAm*)enemy, play);
             break;
 
         default:
@@ -514,7 +530,7 @@ s32 Sekiro_IsDeathblowFlipPathClear(
      * Parameters after hitPoly:
      *     checkOneFace
      *     checkWall
-     *     checkFloor
+     *     checkFloors
      *     checkCeiling
      *
      * We care about walls here, not floors or ceilings.
@@ -535,6 +551,19 @@ s32 Sekiro_IsDeathblowFlipPathClear(
     }
 
     return true;
+}
+
+void Sekiro_StartDeathblowCinematic(
+    PlayState* play,
+    Player* player
+) {
+    sDeathblowActive = true;
+
+    Player_SetCsActionWithHaltedActors(
+        play,
+        &player->actor,
+        PLAYER_CSACTION_97
+    );
 }
 
 s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
@@ -637,7 +666,7 @@ s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
         * Skip the flip and stab from the front.
         */
         if (!flipPathClear) {
-            Sekiro_StartDeathblowFinisher(play, player);
+            Sekiro_StartDeathblowCinematic(play, player);
             return 1;
         }
 
@@ -679,13 +708,7 @@ s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
     player->actor.velocity.y = 0.0f;
     player->actor.velocity.z = 0.0f;
 
-    sDeathblowActive = true;
-
-    Player_SetCsActionWithHaltedActors(
-        play,
-        &player->actor,
-        PLAYER_CSACTION_97
-    );
+    Sekiro_StartDeathblowCinematic(play, player);
 
     return 1;
 }
