@@ -156,6 +156,27 @@ typedef struct {
 
 static SekiroFlipTestState sFlipTest;
 
+typedef struct {
+    s32 active;
+    s32 timer;
+    Actor* target;
+
+    f32 radius;
+    f32 startY;
+
+    s16 startYaw;
+    s16 yawDelta;
+
+    SekiroDeathblowFinisher finisher;
+} SekiroOrbitState;
+
+static SekiroOrbitState sOrbit;
+
+s32 Sekiro_UpdateDeathblowOrbit(
+    PlayState* play,
+    Player* player
+);
+
 void Sekiro_LogDeflect(
     s16 actorId,
     s16 colorTimer,
@@ -482,6 +503,69 @@ void Sekiro_PlayerAction_DeathblowFlip(Player* player, PlayState* play) {
     Sekiro_UpdateDeathblowFlipTest(play, player);
 }
 
+void Sekiro_PlayerAction_DeathblowOrbit(
+    Player* player,
+    PlayState* play
+) {
+    Sekiro_UpdateDeathblowOrbit(play, player);
+}
+
+void Sekiro_StartDeathblowOrbit(
+    PlayState* play,
+    Player* player,
+    Actor* target
+) {
+    f32 dx;
+    f32 dz;
+
+    sOrbit.active = true;
+    sOrbit.timer = 0;
+    sOrbit.target = target;
+    sOrbit.startY = player->actor.world.pos.y;
+    sOrbit.finisher = Sekiro_GetRandomDeathblowFinisher();
+
+    /*
+     * Determine Link's current angle around the enemy.
+     */
+    sOrbit.startYaw = Math_Vec3f_Yaw(
+        &target->world.pos,
+        &player->actor.world.pos
+    );
+
+    /*
+     * Current radius from the enemy.
+     */
+    dx = player->actor.world.pos.x - target->world.pos.x;
+    dz = player->actor.world.pos.z - target->world.pos.z;
+
+    sOrbit.radius = sqrtf(SQ(dx) + SQ(dz));
+
+    /*
+     * For the first test, always travel clockwise by 180 degrees.
+     */
+    sOrbit.yawDelta = 0x8000;
+
+    player->linearVelocity = 0.0f;
+    player->actor.speedXZ = 0.0f;
+    player->actor.velocity.x = 0.0f;
+    player->actor.velocity.y = 0.0f;
+    player->actor.velocity.z = 0.0f;
+
+    Player_SetupAction(
+        play,
+        player,
+        Sekiro_PlayerAction_DeathblowOrbit,
+        0
+    );
+
+    Player_PlaySekiroRoll(player, play);
+
+    osSyncPrintf(
+        "SEKIRO: orbit selected finisher=%d\n",
+        sOrbit.finisher
+    );
+}
+
 void Sekiro_StartDeathblowFlipTest(
     PlayState* play,
     Player* player,
@@ -610,6 +694,106 @@ s32 Sekiro_UpdateDeathblowFlipTest(
         );
         return 1;
     }
+    return 1;
+}
+
+s32 Sekiro_UpdateDeathblowOrbit(
+    PlayState* play,
+    Player* player
+) {
+    f32 t;
+    s16 orbitYaw;
+    s16 yawToTarget;
+
+    if (!sOrbit.active) {
+        return 0;
+    }
+
+    if ((sOrbit.target == NULL) ||
+        (sOrbit.target->update == NULL)) {
+        sOrbit.active = false;
+        Player_SetCsAction(play, NULL, PLAYER_CSACTION_7);
+        return 0;
+    }
+
+    LinkAnimation_Update(
+        play,
+        &player->skelAnime
+    );
+
+    sOrbit.timer++;
+
+    /*
+     * Start with the same 20-frame duration as the aerial flip.
+     */
+    t = sOrbit.timer / 20.0f;
+
+    if (t > 1.0f) {
+        t = 1.0f;
+    }
+
+    orbitYaw =
+        sOrbit.startYaw +
+        (s16)(sOrbit.yawDelta * t);
+
+    /*
+     * Move Link around the enemy rather than directly through it.
+     */
+    player->actor.world.pos.x =
+        sOrbit.target->world.pos.x +
+        (Math_SinS(orbitYaw) * sOrbit.radius);
+
+    player->actor.world.pos.z =
+        sOrbit.target->world.pos.z +
+        (Math_CosS(orbitYaw) * sOrbit.radius);
+
+    /*
+     * Flat-ground test only.
+     */
+    player->actor.world.pos.y = sOrbit.startY;
+
+    /*
+    * Keep Link facing the enemy while he rolls around it.
+    */
+    yawToTarget = Math_Vec3f_Yaw(
+        &player->actor.world.pos,
+        &sOrbit.target->world.pos
+    );
+
+    player->actor.shape.rot.y = yawToTarget;
+    player->actor.world.rot.y = yawToTarget;
+    player->yaw = yawToTarget;
+
+    player->linearVelocity = 0.0f;
+    player->actor.speedXZ = 0.0f;
+    player->actor.velocity.x = 0.0f;
+    player->actor.velocity.y = 0.0f;
+    player->actor.velocity.z = 0.0f;
+
+    if (sOrbit.timer >= 20) {
+        /*
+         * Face the enemy immediately before launching the real attack.
+         */
+        yawToTarget = Math_Vec3f_Yaw(
+            &player->actor.world.pos,
+            &sOrbit.target->world.pos
+        );
+
+        player->actor.shape.rot.y = yawToTarget;
+        player->actor.world.rot.y = yawToTarget;
+        player->yaw = yawToTarget;
+
+        sOrbit.active = false;
+
+        Sekiro_StartDeathblowFinisher(
+            play,
+            player,
+            sOrbit.finisher
+        );
+
+        return 1;
+    }
+
     return 1;
 }
 
@@ -789,12 +973,28 @@ s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
         /*
         * The route is clear.
         */
-        Sekiro_StartDeathblowFlipTest(
-            play,
-            player,
-            target,
-            &backPos
-        );
+        if (Rand_ZeroOne() < 0.5f) {
+            osSyncPrintf(
+                "SEKIRO: front entry=aerial flip\n"
+            );
+
+            Sekiro_StartDeathblowFlipTest(
+                play,
+                player,
+                target,
+                &backPos
+            );
+        } else {
+            osSyncPrintf(
+                "SEKIRO: front entry=ground orbit\n"
+            );
+
+            Sekiro_StartDeathblowOrbit(
+                play,
+                player,
+                target
+            );
+        }
 
         return 1;
     }
