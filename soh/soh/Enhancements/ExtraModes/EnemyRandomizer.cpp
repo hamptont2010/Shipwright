@@ -719,6 +719,8 @@ static SekiroTestEnemyEntry sSekiroTestEnemies[] = {
     { ACTOR_EN_WF,       0, "Wolfos" },
     { ACTOR_EN_GELDB,    0, "Gerudo Fighter" },
     { ACTOR_EN_DEKUBABA, 0, "Deku Baba" },
+    { ACTOR_EN_SKB,  0, "Stalchild" },
+    { ACTOR_EN_TITE, 0, "Tektite" },
 };
 
 static const SekiroTestEnemyEntry sSekiroInitialEnemy = {
@@ -796,22 +798,51 @@ static void Sekiro_UpdateTestEnemyCycler(PlayState* play) {
     }
 
     if (play->sceneNum != SCENE_DEKU_TREE ||
-        play->roomCtx.curRoom.num != 1 ||
-        !sSekiroTestSpawnReady) {
+        play->roomCtx.curRoom.num != 1) {
+        return;
+    }
+
+    Input* input = &play->state.input[0];
+
+    /*
+     * Developer-room recovery:
+     * clear the room-completion flag so test enemies can spawn again.
+     */
+    if (CHECK_BTN_ALL(input->press.button, BTN_DUP)) {
+        Flags_UnsetClear(
+            play,
+            play->roomCtx.curRoom.num
+        );
+
+        SPDLOG_INFO(
+            "Sekiro: cleared test-room completion flag for room {}.",
+            play->roomCtx.curRoom.num
+        );
+
+        /*
+         * If we already captured the reusable spawn entry during this
+         * room visit, immediately restore an enemy.
+         */
+        if (sSekiroTestSpawnReady) {
+            Sekiro_SpawnSelectedTestEnemy(play);
+        } else {
+            SPDLOG_INFO(
+                "Sekiro: re-enter the room to rebuild the test spawn point."
+            );
+        }
+
+        return;
+    }
+
+    if (!sSekiroTestSpawnReady) {
         return;
     }
 
     bool nextPressed =
-        CHECK_BTN_ALL(
-            play->state.input[0].press.button,
-            BTN_DRIGHT
-        );
+        CHECK_BTN_ALL(input->press.button, BTN_DRIGHT);
 
     bool previousPressed =
-        CHECK_BTN_ALL(
-            play->state.input[0].press.button,
-            BTN_DLEFT
-        );
+        CHECK_BTN_ALL(input->press.button, BTN_DLEFT);
 
     if (!nextPressed && !previousPressed) {
         return;
