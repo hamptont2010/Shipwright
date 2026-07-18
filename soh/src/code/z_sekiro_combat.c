@@ -486,13 +486,13 @@ void Sekiro_StartDeathblowFlipTest(
     PlayState* play,
     Player* player,
     Actor* target,
-    Vec3f* frontPos
+    Vec3f* destination
 ) {
     sFlipTest.active = 1;
     sFlipTest.timer = 0;
     sFlipTest.target = target;
     sFlipTest.startPos = player->actor.world.pos;
-    sFlipTest.endPos = *frontPos;
+    sFlipTest.endPos = *destination;
     sFlipTest.endPos.y = player->actor.world.pos.y;
     sFlipTest.previousGravity = player->actor.gravity;
 
@@ -800,31 +800,80 @@ s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
     }
 
     /*
-     * BACK CASE:
-     *
-     * Link is already behind the enemy.
-     * Snap him to the exact rear point and start the normal
-     * cinematic deathblow.
-     */
+    * BACK CASE:
+    *
+    * Link is already behind the enemy.
+    * Snap him to the exact rear point.
+    *
+    * From here, randomly choose between:
+    *     1. The Ganon cinematic from behind.
+    *     2. A reverse aerial flip to the front.
+    */
+
     player->actor.world.pos.x = backPos.x;
     player->actor.world.pos.z = backPos.z;
 
-    // Face Link directly toward the target.
+    /*
+    * Face Link directly toward the target before either entry begins.
+    */
     yawToTarget =
-        Math_Vec3f_Yaw(&player->actor.world.pos, &target->world.pos);
+        Math_Vec3f_Yaw(
+            &player->actor.world.pos,
+            &target->world.pos
+        );
 
     player->actor.shape.rot.y = yawToTarget;
     player->actor.world.rot.y = yawToTarget;
     player->yaw = yawToTarget;
 
-    // Prevent existing movement from carrying Link away after the snap.
+    /*
+    * Prevent existing movement from carrying Link away after the snap.
+    */
     player->linearVelocity = 0.0f;
     player->actor.speedXZ = 0.0f;
     player->actor.velocity.x = 0.0f;
     player->actor.velocity.y = 0.0f;
     player->actor.velocity.z = 0.0f;
 
-    Sekiro_StartDeathblowCinematic(play, player);
+    /*
+    * Check whether the reverse flip route from behind the enemy
+    * to the front anchor is clear.
+    */
+    flipPathClear = Sekiro_IsDeathblowFlipPathClear(
+        play,
+        &backPos,
+        &frontPos
+    );
+
+    /*
+    * If the route is clear, randomly choose between the cinematic
+    * and the reverse flip.
+    *
+    * If the route is blocked, always use the cinematic.
+    */
+    if (flipPathClear && (Rand_ZeroOne() < 0.5f)) {
+        osSyncPrintf(
+            "SEKIRO: rear entry=reverse flip\n"
+        );
+
+        Sekiro_StartDeathblowFlipTest(
+            play,
+            player,
+            target,
+            &frontPos
+        );
+
+        return 1;
+    }
+
+    osSyncPrintf(
+        "SEKIRO: rear entry=cinematic\n"
+    );
+
+    Sekiro_StartDeathblowCinematic(
+        play,
+        player
+    );
 
     return 1;
 }
