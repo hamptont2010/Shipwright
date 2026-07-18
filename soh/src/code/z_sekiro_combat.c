@@ -530,7 +530,7 @@ s32 Sekiro_IsDeathblowFlipPathClear(
      * Parameters after hitPoly:
      *     checkOneFace
      *     checkWall
-     *     checkFloor
+     *     checkFloors
      *     checkCeiling
      *
      * We care about walls here, not floors or ceilings.
@@ -551,6 +551,19 @@ s32 Sekiro_IsDeathblowFlipPathClear(
     }
 
     return true;
+}
+
+void Sekiro_StartDeathblowCinematic(
+    PlayState* play,
+    Player* player
+) {
+    sDeathblowActive = true;
+
+    Player_SetCsActionWithHaltedActors(
+        play,
+        &player->actor,
+        PLAYER_CSACTION_97
+    );
 }
 
 s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
@@ -653,7 +666,7 @@ s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
         * Skip the flip and stab from the front.
         */
         if (!flipPathClear) {
-            Sekiro_StartDeathblowFinisher(play, player);
+            Sekiro_StartDeathblowCinematic(play, player);
             return 1;
         }
 
@@ -695,13 +708,7 @@ s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
     player->actor.velocity.y = 0.0f;
     player->actor.velocity.z = 0.0f;
 
-    sDeathblowActive = true;
-
-    Player_SetCsActionWithHaltedActors(
-        play,
-        &player->actor,
-        PLAYER_CSACTION_97
-    );
+    Sekiro_StartDeathblowCinematic(play, player);
 
     return 1;
 }

@@ -1924,17 +1924,21 @@ void EnZf_SetupDie(EnZf* this) {
     this->actor.flags &= ~ACTOR_FLAG_ATTENTION_ENABLED;
 
     if (D_80B4A1B4 != -1) {
-        if (this->actor.prev != NULL) {
-            ((EnZf*)this->actor.prev)->unk_3F4 = 90;
+        Actor* partner = NULL;
 
-            if (this->actor.prev->colChkInfo.health < 3) {
-                this->actor.prev->colChkInfo.health = 3;
-            }
-        } else {
-            ((EnZf*)this->actor.next)->unk_3F4 = 90;
+        if ((this->actor.prev != NULL) &&
+            (this->actor.prev->id == ACTOR_EN_ZF)) {
+            partner = this->actor.prev;
+        } else if ((this->actor.next != NULL) &&
+                (this->actor.next->id == ACTOR_EN_ZF)) {
+            partner = this->actor.next;
+        }
 
-            if (this->actor.next->colChkInfo.health < 3) {
-                this->actor.next->colChkInfo.health = 3;
+        if (partner != NULL) {
+            ((EnZf*)partner)->unk_3F4 = 90;
+
+            if (partner->colChkInfo.health < 3) {
+                partner->colChkInfo.health = 3;
             }
         }
     }
