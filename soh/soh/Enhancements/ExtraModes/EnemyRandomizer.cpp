@@ -755,6 +755,15 @@ static void Sekiro_SpawnSelectedTestEnemy(PlayState* play) {
         Actor_Kill(sSekiroTestEnemy);
     }
 
+        /*
+     * Gerudo Fighter uses home.rot.z as a switch flag.
+     * The preserved Deku Scrub spawn entry gives her switch 0,
+     * so satisfy that native activation condition before spawning.
+     */
+    if (testEnemy->actorId == ACTOR_EN_GELDB) {
+        Flags_SetSwitch(play, 0);
+    }
+
     sSekiroTestEnemy = Sekiro_SpawnEnemyFromActorEntry(
         &play->actorCtx,
         play,
