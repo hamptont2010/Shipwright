@@ -35,4 +35,6 @@ typedef struct EnTite {
     /* 0x036C */ Vec3f backLeftFootPos;
 } EnTite; // size = 0x0378
 
+void EnTite_ApplyPostureBreak(EnTite* enTite);
+
 #endif

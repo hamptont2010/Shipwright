@@ -75,6 +75,7 @@ void EnTite_DeathCry(EnTite* this, PlayState* play);
 void EnTite_FallApart(EnTite* this, PlayState* play);
 void EnTite_FlipOnBack(EnTite* this, PlayState* play);
 void EnTite_FlipUpright(EnTite* this, PlayState* play);
+void EnTite_SetupStunned(EnTite* this);
 
 const ActorInit En_Tite_InitVars = {
     ACTOR_EN_TITE,
@@ -171,6 +172,42 @@ static Vec3f sIceChunks[12] = {
     { 10.0f, 40.0f, -10.0f }, { -10.0f, 40.0f, -10.0f }, { 0.0f, 20.0f, -20.0f },  { 10.0f, 0.0f, 10.0f },
     { 10.0f, 0.0f, -10.0f },  { 0.0f, 20.0f, 20.0f },    { -10.0f, 0.0f, 10.0f },  { -10.0f, 0.0f, -10.0f },
 };
+
+void EnTite_ApplyPostureBreak(EnTite* enTite) {
+    if ((enTite == NULL) || (enTite->actor.colChkInfo.health == 0)) {
+        return;
+    }
+
+    /*
+     * Clear the attack collision result so EnTite_Attack cannot
+     * overwrite the posture break with its recoil state.
+     */
+    enTite->collider.base.atFlags &= ~(AT_HIT | AT_BOUNCED);
+    enTite->collider.base.acFlags &= ~AC_HIT;
+
+    /*
+     * Stop the current lunge. EnTite_SetupStunned normally begins
+     * with backward momentum, but for a deflect posture break we want
+     * a cleaner stop instead of carrying the attack through Link.
+     */
+    enTite->actor.speedXZ = 0.0f;
+    enTite->actor.velocity.x = 0.0f;
+    enTite->actor.velocity.z = 0.0f;
+
+    /*
+     * Use the normal non-ice stun effect.
+     */
+    enTite->damageEffect = 1;
+    Actor_SetColorFilter(&enTite->actor, 0, 0x78, 0, 0x50);
+
+    EnTite_SetupStunned(enTite);
+
+    /*
+     * SetupStunned applies -6 speed as part of the normal projectile
+     * stun reaction. Cancel that here so the posture break stays put.
+     */
+    enTite->actor.speedXZ = 0.0f;
+}
 
 void EnTite_SetupAction(EnTite* this, EnTiteActionFunc actionFunc) {
     this->actionFunc = actionFunc;
