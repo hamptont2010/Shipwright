@@ -22,6 +22,10 @@ typedef struct EnSkb {
     /* 0x028C */ BodyBreak bodyBreak; 
     /* 0x02A4 */ ColliderJntSph collider;
     /* 0x02C4 */ ColliderJntSphElement colliderItem[2];
+    u8 ignoreDaytimeDespawn;
 } EnSkb; // size = 0x0344
+
+void EnSkb_ActivateImmediately(EnSkb* enSkb);
+void EnSkb_AllowDaytimeSpawn(EnSkb* enSkb);
 
 #endif

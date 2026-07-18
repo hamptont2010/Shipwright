@@ -27,6 +27,7 @@ extern "C" {
 #include "src/overlays/actors/ovl_En_Peehat/z_en_peehat.h"
 #include "src/overlays/actors/ovl_En_Rr/z_en_rr.h"
 #include "src/overlays/actors/ovl_En_Vali/z_en_vali.h"
+#include "src/overlays/actors/ovl_En_Skb/z_en_skb.h"
 
 extern PlayState* gPlayState;
 extern int gMapLoading;
@@ -719,7 +720,7 @@ static SekiroTestEnemyEntry sSekiroTestEnemies[] = {
     { ACTOR_EN_WF,       0, "Wolfos" },
     { ACTOR_EN_GELDB,    0, "Gerudo Fighter" },
     { ACTOR_EN_DEKUBABA, 0, "Deku Baba" },
-    { ACTOR_EN_SKB,  0, "Stalchild" },
+    { ACTOR_EN_SKB,  -1, "Stalchild" },
     { ACTOR_EN_TITE, 0, "Tektite" },
 };
 
@@ -741,6 +742,10 @@ static void Sekiro_ActivateTestEnemy(Actor* actor, PlayState* play) {
 
         case ACTOR_EN_GELDB:
             /* Add Gerudo-specific activation here if still needed. */
+            break;
+
+        case ACTOR_EN_SKB:
+            EnSkb_AllowDaytimeSpawn((EnSkb*)actor);
             break;
 
         default:
