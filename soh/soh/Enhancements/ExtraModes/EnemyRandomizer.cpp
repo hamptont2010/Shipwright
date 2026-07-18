@@ -723,6 +723,7 @@ static SekiroTestEnemyEntry sSekiroTestEnemies[] = {
     { ACTOR_EN_SKB,  -1, "Stalchild" },
     { ACTOR_EN_TITE, 0, "Tektite" },
     { ACTOR_EN_AM, 1, "Armos" },
+    { ACTOR_EN_FZ, 0, "Frezzard' "}
 };
 
 static const SekiroTestEnemyEntry sSekiroInitialEnemy = {

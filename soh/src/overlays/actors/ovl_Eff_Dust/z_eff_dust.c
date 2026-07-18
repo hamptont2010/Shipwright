@@ -7,6 +7,7 @@
 #include "z_eff_dust.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "soh/frame_interpolation.h"
+#define EFF_DUST_ELEMENTAL_FLAG 0x100
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_DRAW_CULLING_DISABLED)
 
@@ -63,7 +64,7 @@ void EffDust_InitPosAndDistance(EffDust* this) {
 
 void EffDust_Init(Actor* thisx, PlayState* play) {
     EffDust* this = (EffDust*)thisx;
-    EffDustType dustEffect = this->actor.params;
+    EffDustType dustEffect = this->actor.params & 0xFF;
 
     EffDust_InitPosAndDistance(this);
 
@@ -180,7 +181,9 @@ void EffDust_UpdateFunc_8099DFC0(EffDust* this, PlayState* play) {
     s32 i;
     s32 j;
 
-    if (parent == NULL || parent->update == NULL || !(player->stateFlags1 & PLAYER_STATE1_CHARGING_SPIN_ATTACK)) {
+if (parent == NULL || parent->update == NULL ||
+    (!(this->actor.params & EFF_DUST_ELEMENTAL_FLAG) &&
+     !(player->stateFlags1 & PLAYER_STATE1_CHARGING_SPIN_ATTACK))) {
         if (this->life != 0) {
             this->life -= 1;
         } else {
@@ -211,7 +214,7 @@ void EffDust_UpdateFunc_8099DFC0(EffDust* this, PlayState* play) {
         if (this->distanceTraveled[i] >= 1.0f) {
 
             theta = Rand_CenteredFloat(65536.0f);
-            switch (this->actor.params) {
+            switch (this->actor.params & 0xFF) {
                 case EFF_DUST_TYPE_2:
                     this->initialPositions[i].x = (Rand_ZeroOne() * 4500.0f) + 700.0f;
                     if (this->initialPositions[i].x > 3000.0f) {
@@ -324,11 +327,18 @@ void EffDust_DrawFunc_8099E784(Actor* thisx, PlayState* play2) {
     Gfx_SetupDL_25Opa(gfxCtx);
 
     gDPPipeSync(POLY_XLU_DISP++);
-    gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 255, 255, 255, 255);
-    if (player->unk_858 >= 0.85f) {
-        gDPSetEnvColor(POLY_XLU_DISP++, 255, 0, 0, 0);
+    if (this->actor.params & EFF_DUST_ELEMENTAL_FLAG) {
+        // Temporary Fire Sword colors
+        gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 255, 160, 40, 255);
+        gDPSetEnvColor(POLY_XLU_DISP++, 255, 20, 0, 0);
     } else {
-        gDPSetEnvColor(POLY_XLU_DISP++, 0, 0, 255, 0);
+        gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 255, 255, 255, 255);
+
+        if (player->unk_858 >= 0.85f) {
+            gDPSetEnvColor(POLY_XLU_DISP++, 255, 0, 0, 0);
+        } else {
+            gDPSetEnvColor(POLY_XLU_DISP++, 0, 0, 255, 0);
+        }
     }
 
     initialPositions = this->initialPositions;
@@ -340,7 +350,11 @@ void EffDust_DrawFunc_8099E784(Actor* thisx, PlayState* play2) {
         FrameInterpolation_RecordOpenChild("Dust 8099E784", i);
 
         if (*distanceTraveled < 1.0f) {
-            gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 255, 255, 255, *distanceTraveled * 255);
+            if (this->actor.params & EFF_DUST_ELEMENTAL_FLAG) {
+                gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 255, 160, 40, *distanceTraveled * 255);
+            } else {
+                gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 255, 255, 255, *distanceTraveled * 255);
+            }
 
             // Needed to match.
             if (!this) {}

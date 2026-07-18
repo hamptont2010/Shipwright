@@ -802,6 +802,8 @@ void EnFz_UpdateIceSmoke(EnFz* this, PlayState* play) {
     s16 i;
     Vec3f pos;
 
+    
+
     for (i = 0; i < ARRAY_COUNT(this->iceSmoke); i++) {
         if (iceSmoke->type) {
             iceSmoke->pos.x += iceSmoke->velocity.x;
