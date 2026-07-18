@@ -147,6 +147,7 @@ u8 Sekiro_GetPostureThreshold(Actor* enemy) {
 typedef struct {
     s32 active;
     s32 timer;
+    s32 rollStarted;
     Actor* target;
     Vec3f startPos;
     Vec3f endPos;
@@ -169,6 +170,8 @@ typedef struct {
 
     SekiroDeathblowFinisher finisher;
 } SekiroOrbitState;
+
+#define SEKIRO_ORBIT_DURATION 17
 
 static SekiroOrbitState sOrbit;
 
@@ -723,6 +726,7 @@ void Sekiro_StartDeathblowFlipTest(
 ) {
     sFlipTest.active = 1;
     sFlipTest.timer = 0;
+    sFlipTest.rollStarted = false;
     sFlipTest.target = target;
     sFlipTest.startPos = player->actor.world.pos;
     sFlipTest.endPos = *destination;
@@ -752,8 +756,6 @@ void Sekiro_StartDeathblowFlipTest(
         0
     );
 
-    Player_PlaySekiroRoll(player, play);
-
 }
 
 s32 Sekiro_UpdateDeathblowFlipTest(
@@ -778,12 +780,19 @@ s32 Sekiro_UpdateDeathblowFlipTest(
         return 0;
     }
 
-    LinkAnimation_Update(play, &player->skelAnime);
-
     sFlipTest.timer++;
 
+    if (!sFlipTest.rollStarted &&
+        (sFlipTest.timer >= 2)) {
+        Player_PlaySekiroRoll(player, play);
+        sFlipTest.rollStarted = true;
+    }
+
+    if (sFlipTest.rollStarted) {
+        LinkAnimation_Update(play, &player->skelAnime);
+    }
+
     t = sFlipTest.timer / 20.0f;
-    s16 arcAngle;
 
     if (t > 1.0f) {
         t = 1.0f;
@@ -875,7 +884,7 @@ s32 Sekiro_UpdateDeathblowOrbit(
     /*
      * Start with the same 20-frame duration as the aerial flip.
      */
-    t = sOrbit.timer / 20.0f;
+    t = sOrbit.timer / (f32)SEKIRO_ORBIT_DURATION;
 
     if (t > 1.0f) {
         t = 1.0f;
@@ -919,7 +928,7 @@ s32 Sekiro_UpdateDeathblowOrbit(
     player->actor.velocity.y = 0.0f;
     player->actor.velocity.z = 0.0f;
 
-    if (sOrbit.timer >= 20) {
+    if (sOrbit.timer >= SEKIRO_ORBIT_DURATION) {
         /*
          * Face the enemy immediately before launching the real attack.
          */
