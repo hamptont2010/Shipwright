@@ -6,6 +6,7 @@
 #include "overlays/actors/ovl_En_Wf/z_en_wf.h"
 #include "overlays/actors/ovl_En_GeldB/z_en_geldb.h"
 #include "overlays/actors/ovl_En_Ik/z_en_ik.h"
+#include "overlays/actors/ovl_En_Skb/z_en_skb.h"
 
 s32 Sekiro_UpdateDeathblowFlipTest(PlayState* play, Player* player);
 
@@ -124,6 +125,9 @@ u8 Sekiro_GetPostureThreshold(Actor* enemy) {
         case ACTOR_EN_IK:
             return 4;
 
+        case ACTOR_EN_SKB:
+            return 2;
+
         default:
             return 3;
     }
@@ -174,6 +178,10 @@ void Sekiro_ApplyPostureBreak(Actor* enemy, PlayState* play) {
 
         case ACTOR_EN_IK:
             EnIk_ApplyPostureBreak((EnIk*)enemy, play);
+            break;
+
+        case ACTOR_EN_SKB:
+            EnSkb_ApplyPostureBreak((EnSkb*)enemy);
             break;
 
         default:

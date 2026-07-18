@@ -25,7 +25,6 @@ typedef struct EnSkb {
     u8 ignoreDaytimeDespawn;
 } EnSkb; // size = 0x0344
 
-void EnSkb_ActivateImmediately(EnSkb* enSkb);
 void EnSkb_AllowDaytimeSpawn(EnSkb* enSkb);
 
 #endif

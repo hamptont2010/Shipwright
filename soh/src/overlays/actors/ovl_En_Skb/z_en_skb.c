@@ -119,6 +119,30 @@ void EnSkb_AllowDaytimeSpawn(EnSkb* enSkb) {
     enSkb->ignoreDaytimeDespawn = true;
 }
 
+void EnSkb_ApplyPostureBreak(EnSkb* enSkb) {
+    if ((enSkb == NULL) || (enSkb->actor.colChkInfo.health == 0)) {
+        return;
+    }
+
+    /*
+     * Remove any pending attack result from the current frame.
+     * The native attack state checks these flags after a shield collision
+     * and can otherwise replace the stun with its recoil state.
+     */
+    enSkb->collider.base.atFlags &= ~(AT_HIT | AT_BOUNCED);
+    enSkb->collider.base.acFlags &= ~AC_HIT;
+    enSkb->setColliderAT = 0;
+
+    /*
+     * Stalchild's native stunned action uses colorFilterTimer as its
+     * recovery timer. These are the same values used by its normal
+     * Deku Nut, boomerang, and Hookshot stun path.
+     */
+    Actor_SetColorFilter(&enSkb->actor, 0, 0x78, 0, 0x50);
+
+    EnSkb_SetupStunned(enSkb);
+}
+
 void EnSkb_SetupAction(EnSkb* this, EnSkbActionFunc actionFunc) {
     this->actionFunc = actionFunc;
 }
