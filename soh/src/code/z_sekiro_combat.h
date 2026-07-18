@@ -10,10 +10,35 @@ extern "C" {
 u8 Sekiro_GetPostureThreshold(Actor* enemy);
 void Sekiro_ApplyPostureBreak(Actor* enemy, PlayState* play);
 void Sekiro_PlayDeathblowSwing(void);
-void Sekiro_StartDeathblowFinisher(PlayState* play, Player* player);
 s32 Sekiro_UpdateDeathblow(PlayState* play, Player* player);
 s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player);
 s32 Sekiro_IsDeathblowActive(void);
+
+typedef enum {
+    SEKIRO_FINISHER_STAB,
+    SEKIRO_FINISHER_SPIN,
+    SEKIRO_FINISHER_BACKSLASH_LEFT,
+    SEKIRO_FINISHER_BACKSLASH_RIGHT,
+    SEKIRO_FINISHER_FLIPSLASH,
+    SEKIRO_FINISHER_JUMPSLASH,
+
+    SEKIRO_FINISHER_FORWARD_SLASH,
+    SEKIRO_FINISHER_RIGHT_SLASH,
+    SEKIRO_FINISHER_LEFT_SLASH,
+    SEKIRO_FINISHER_FORWARD_COMBO,
+    SEKIRO_FINISHER_RIGHT_COMBO,
+    SEKIRO_FINISHER_LEFT_COMBO,
+    SEKIRO_FINISHER_STAB_COMBO,
+    SEKIRO_FINISHER_BIG_SPIN,
+} SekiroDeathblowFinisher;
+
+void Sekiro_StartDeathblowFinisher(
+    PlayState* play,
+    Player* player,
+    SekiroDeathblowFinisher finisher
+);
+
+SekiroDeathblowFinisher Sekiro_GetRandomDeathblowFinisher(void);
 
 typedef enum {
     SEKIRO_IMPACT_NONE,

@@ -32,6 +32,7 @@
 #include "soh/OTRGlobals.h"
 #include "soh/ResourceManagerHelpers.h"
 
+
 #include "code/z_sekiro_combat.h"
 
 #include <string.h>
@@ -41,6 +42,8 @@
 // Some player animations are played at this reduced speed, for reasons yet unclear.
 // This is called "adjusted" for now.
 #define PLAYER_ANIM_ADJUSTED_SPEED (2.0f / 3.0f)
+
+#define EFF_DUST_ELEMENTAL_FLAG 0x100
 
 typedef enum {
     /* 0x00 */ KNOB_ANIM_ADULT_L,
@@ -346,6 +349,9 @@ void Player_Action_CsAction(Player* this, PlayState* play);
 
 #pragma region[SoH]
 u8 gWalkSpeedToggle;
+
+static s32 sSekiroElementChargeTest = false;
+static Actor* sSekiroElementSparkleActor = NULL;
 
 // Sets a flag according to which type of flag is specified in player->pendingFlag.flagType
 // and which flag is specified in player->pendingFlag.flagID.
@@ -4731,7 +4737,6 @@ s32 func_808382DC(Player* this, PlayState* play) {
     s32 pad;
     s32 sp68 = false;
     s32 sp64;
-    u8 postureThreshold;
 
 
     if ((this->brokenTarget != NULL) && (this->brokenTimer > 0)) {
@@ -12284,6 +12289,37 @@ void Player_Update(Actor* thisx, PlayState* play) {
         }
 
         Player_UpdateCommon(this, play, &sp44);
+
+        if (CHECK_BTN_ALL(sp44.press.button, BTN_DDOWN)) {
+            sSekiroElementChargeTest = !sSekiroElementChargeTest;
+
+            if (!sSekiroElementChargeTest) {
+                if ((sSekiroElementSparkleActor != NULL) &&
+                    (sSekiroElementSparkleActor->update != NULL)) {
+                    Actor_Kill(sSekiroElementSparkleActor);
+                }
+
+                sSekiroElementSparkleActor = NULL;
+            }
+        }
+
+        if (sSekiroElementChargeTest &&
+            ((sSekiroElementSparkleActor == NULL) ||
+            (sSekiroElementSparkleActor->update == NULL))) {
+            sSekiroElementSparkleActor =
+                Actor_Spawn(&play->actorCtx, play, ACTOR_EFF_DUST,
+                            this->actor.world.pos.x,
+                            this->actor.world.pos.y,
+                            this->actor.world.pos.z,
+                            0, 0, 0,
+                            (Player_GetMeleeWeaponHeld(this) + 1) |
+                                EFF_DUST_ELEMENTAL_FLAG);
+
+            if (sSekiroElementSparkleActor != NULL) {
+                sSekiroElementSparkleActor->parent = &this->actor;
+            }
+        }
+
     }
 
     MREG(52) = this->actor.world.pos.x;

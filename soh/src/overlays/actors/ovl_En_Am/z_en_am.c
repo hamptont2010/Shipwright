@@ -31,6 +31,7 @@ void EnAm_Cooldown(EnAm* this, PlayState* play);
 void EnAm_Ricochet(EnAm* this, PlayState* play);
 void EnAm_Stunned(EnAm* this, PlayState* play);
 void EnAm_RecoilFromDamage(EnAm* this, PlayState* play);
+void EnAm_SetupStunned(EnAm* this, PlayState* play);
 
 typedef enum {
     /* 00 */ AM_BEHAVIOR_NONE,
@@ -165,6 +166,63 @@ static InitChainEntry sInitChain[] = {
     ICHAIN_F32_DIV1000(gravity, -4000, ICHAIN_CONTINUE),
     ICHAIN_F32(targetArrowOffset, 5300, ICHAIN_STOP),
 };
+
+void EnAm_ApplyPostureBreak(EnAm* enAm, PlayState* play) {
+    Actor* actor;
+
+    if ((enAm == NULL) || (play == NULL)) {
+        return;
+    }
+
+    actor = &enAm->dyna.actor;
+
+    if ((actor->params == ARMOS_STATUE) ||
+        (actor->colChkInfo.health == 0)) {
+        return;
+    }
+
+    /*
+     * Clear every pending collision result from the attack,
+     * hard shell, and vulnerable body.
+     */
+    enAm->hitCollider.base.atFlags &= ~(AT_HIT | AT_BOUNCED);
+    enAm->hurtCollider.base.acFlags &= ~AC_HIT;
+    enAm->blockCollider.base.acFlags &= ~AC_HIT;
+
+    /*
+     * Cancel Armos-specific hop, push, shake, and attack state.
+     */
+    enAm->unk_258 = 0;
+    enAm->unk_264 = 0;
+    enAm->dyna.unk_150 = 0.0f;
+    enAm->dyna.unk_154 = 0.0f;
+
+    /*
+     * Cancel ordinary actor movement.
+     */
+    actor->speedXZ = 0.0f;
+    actor->velocity.x = 0.0f;
+    actor->velocity.y = 0.0f;
+    actor->velocity.z = 0.0f;
+
+    enAm->damageEffect = AM_DMGEFF_STUN;
+
+    EnAm_SetupStunned(enAm, play);
+
+    /*
+     * Native SetupStunned deliberately applies backward recoil.
+     * Remove it for the posture-break version.
+     */
+    actor->speedXZ = 0.0f;
+    actor->velocity.x = 0.0f;
+    actor->velocity.y = 0.0f;
+    actor->velocity.z = 0.0f;
+
+    enAm->unk_258 = 0;
+    enAm->unk_264 = 0;
+    enAm->dyna.unk_150 = 0.0f;
+    enAm->dyna.unk_154 = 0.0f;
+}
 
 void EnAm_SetupAction(EnAm* this, EnAmActionFunc actionFunc) {
     this->actionFunc = actionFunc;

@@ -35,4 +35,6 @@ typedef enum {
     /* 1 */ ARMOS_ENEMY
 } ArmosType;
 
+void EnAm_ApplyPostureBreak(EnAm* enAm, PlayState* play);
+
 #endif
