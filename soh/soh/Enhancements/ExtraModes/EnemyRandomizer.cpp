@@ -16,6 +16,8 @@ extern "C" {
 #include "overlays/actors/ovl_En_Ik/z_en_ik.h"
 
 #include "src/code/z_sekiro_combat.h"
+#include "soh/Enhancements/ExtraModes/SekiroTutorial.h"
+
 #include <z64.h>
 #include "src/overlays/actors/ovl_Bg_Haka/z_bg_haka.h"
 #include "src/overlays/actors/ovl_Bg_Haka_Huta/z_bg_haka_huta.h"
@@ -907,6 +909,9 @@ static void OnGameFrameUpdateSekiroTestEnemyCycler() {
 }
 
 void RegisterEnemyRandomizer() {
+
+    RegisterSekiroTutorialMessages();
+
     COND_ID_HOOK(OnActorInit, ACTOR_EN_MB, ENEMY_RANDOMIZER_ENABLED, FixClubMoblinScale);
 
     COND_HOOK(OnGameFrameUpdate, true, OnGameFrameUpdateSekiroTestEnemyCycler);
