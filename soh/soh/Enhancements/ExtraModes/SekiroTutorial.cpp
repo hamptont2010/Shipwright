@@ -15,7 +15,7 @@ void BuildSekiroTutorialMessage(uint16_t* textId, bool* loadFromMessageTable) {
         "You must be locked onto an enemy to Deflect!^"
         "Press %rR%w just before an enemy's strike lands to Deflect.^"
         "Break an enemy's Posture with enough Deflects.^"
-        "Then press %rA%w to perform a Deathblow."
+        "When the targeting arrows turn %rred%w, press %rA%w to perform a Deathblow."
     );
 
     msg.AutoFormat();

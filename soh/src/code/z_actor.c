@@ -457,9 +457,20 @@ void Attention_Draw(TargetContext* targetCtx, PlayState* play) {
         f32 var1;
         f32 var2;
         s32 i;
+        u8 reticleR;
+        u8 reticleG;
+        u8 reticleB;
+        s32 sekiroDeathblowReady;
 
         FrameInterpolation_RecordOpenChild(actor, 0);
         player = GET_PLAYER(play);
+
+        sekiroDeathblowReady =
+            (actor != NULL) &&
+            (player->brokenTarget == actor) &&
+            (actor->update != NULL) &&
+            (player->focusActor == actor) &&
+            Player_CheckHostileLockOn(player);
 
         spCE = 0xFF;
         var1 = 1.0f;
@@ -514,7 +525,25 @@ void Attention_Draw(TargetContext* targetCtx, PlayState* play) {
                     Matrix_Translate(entry->pos.x, entry->pos.y, 0.0f, MTXMODE_NEW);
                     Matrix_Scale(var2, 0.15f, 1.0f, MTXMODE_APPLY);
 
-                    gDPSetPrimColor(OVERLAY_DISP++, 0, 0, entry->color.r, entry->color.g, entry->color.b, (u8)spCE);
+                    reticleR = entry->color.r;
+                    reticleG = entry->color.g;
+                    reticleB = entry->color.b;
+
+                    if (sekiroDeathblowReady) {
+                        reticleR = 255;
+                        reticleG = 0;
+                        reticleB = 0;
+                    }
+
+                    gDPSetPrimColor(
+                        OVERLAY_DISP++,
+                        0,
+                        0,
+                        reticleR,
+                        reticleG,
+                        reticleB,
+                        (u8)spCE
+                    );
 
                     Matrix_RotateZ((targetCtx->unk_4B & 0x7F) * (M_PI / 64), MTXMODE_APPLY);
 
