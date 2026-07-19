@@ -30,6 +30,8 @@ void EnDekubaba_PrunedSomersault(EnDekubaba* this, PlayState* play);
 void EnDekubaba_ShrinkDie(EnDekubaba* this, PlayState* play);
 void EnDekubaba_DeadStickDrop(EnDekubaba* this, PlayState* play);
 
+void EnDekubaba_SetupStunnedVertical(EnDekubaba* this);
+
 static Vec3f sZeroVec = { 0.0f, 0.0f, 0.0f };
 
 const ActorInit En_Dekubaba_InitVars = {
@@ -401,16 +403,18 @@ void EnDekubaba_SetupHit(EnDekubaba* this, s32 arg1) {
 }
 
 void EnDekubaba_ApplyPostureBreak(EnDekubaba* this) {
-    /**
-    *Audio_PlayActorSound2(&this->actor, NA_SE_SY_CORRECT_CHIME);
-    */
     if (this->actor.colChkInfo.health == 0) {
         return;
     }
 
-    this->collider.base.atFlags &= ~AT_HIT;
+    this->collider.base.atFlags &= ~(AT_HIT | AT_BOUNCED);
+    this->collider.base.acFlags &= ~AC_HIT;
 
-    EnDekubaba_SetupHit(this, 2);
+    if (this->actionFunc == EnDekubaba_Lunge) {
+        EnDekubaba_SetupHit(this, 2);
+    } else {
+        EnDekubaba_SetupStunnedVertical(this);
+    }
 }
 
 void EnDekubaba_SetupPrunedSomersault(EnDekubaba* this) {

@@ -9,6 +9,8 @@
 #include "overlays/actors/ovl_En_Skb/z_en_skb.h"
 #include "overlays/actors/ovl_En_Tite/z_en_tite.h"
 #include "overlays/actors/ovl_En_Am/z_en_am.h"
+#include "overlays/effects/ovl_Effect_Ss_HitMark/z_eff_ss_hitmark.h"
+#include "overlays/actors/ovl_En_Karebaba/z_en_karebaba.h"
 
 s32 Sekiro_UpdateDeathblowFlipTest(PlayState* play, Player* player);
 
@@ -106,6 +108,29 @@ Actor* Sekiro_SpawnEnemyFromActorEntry(
     );
 }
 
+s32 Sekiro_IsSupportedEnemy(Actor* enemy) {
+    if (enemy == NULL) {
+        return false;
+    }
+
+    switch (enemy->id) {
+        case ACTOR_EN_DEKUBABA:
+        case ACTOR_EN_KAREBABA:
+        case ACTOR_EN_TEST:
+        case ACTOR_EN_ZF:
+        case ACTOR_EN_WF:
+        case ACTOR_EN_GELDB:
+        case ACTOR_EN_IK:
+        case ACTOR_EN_SKB:
+        case ACTOR_EN_TITE:
+        case ACTOR_EN_AM:
+            return true;
+
+        default:
+            return false;
+    }
+}
+
 u8 Sekiro_GetPostureThreshold(Actor* enemy) {
     if (enemy == NULL) {
         return 3;
@@ -138,6 +163,9 @@ u8 Sekiro_GetPostureThreshold(Actor* enemy) {
 
         case ACTOR_EN_AM:
             return 3;
+
+        case ACTOR_EN_KAREBABA:
+            return 2;
 
         default:
             return 3;
@@ -338,6 +366,10 @@ void Sekiro_ApplyPostureBreak(Actor* enemy, PlayState* play) {
             EnAm_ApplyPostureBreak((EnAm*)enemy, play);
             break;
 
+        case ACTOR_EN_KAREBABA:
+            EnKarebaba_ApplyPostureBreak((EnKarebaba*)enemy);
+            break;
+
         default:
             Actor_SetColorFilter(enemy, 0x4000, 255, 0, 60);
             break;
@@ -357,15 +389,19 @@ void Sekiro_RegisterDeflect(
         return;
     }
 
+    if (attacker->category != ACTORCAT_ENEMY) {
+        return;
+    }
+
+    if (!Sekiro_IsSupportedEnemy(attacker)) {
+        return;
+    }
+
     Sekiro_LogDeflect(
         attacker->id,
         attacker->colorFilterTimer,
         player->deflectTimer
     );
-
-    if (attacker->category != ACTORCAT_ENEMY) {
-        return;
-    }
 
     if (attacker->freezeTimer != 0) {
         return;
@@ -423,6 +459,51 @@ void Sekiro_RegisterDeflect(
     Sfx_PlaySfxCentered(NA_SE_VO_LI_SWORD_N);
 }
 
+SekiroImpactType Sekiro_GetDeathblowImpactType(Actor* target) {
+    if (target == NULL) {
+        return SEKIRO_IMPACT_NONE;
+    }
+
+    switch (target->id) {
+        case ACTOR_EN_DEKUBABA:
+            return SEKIRO_IMPACT_GREEN_BLOOD;
+
+        case ACTOR_EN_ZF:
+            return SEKIRO_IMPACT_BLUE_BLOOD;
+
+        case ACTOR_EN_TEST:
+            /*
+             * Temporary fallback until we identify the exact
+             * red dust effect used by native Stalfos impacts.
+             */
+            return SEKIRO_IMPACT_RED_HITMARK;
+
+        case ACTOR_EN_WF:
+            return SEKIRO_IMPACT_RED_BLOOD;
+
+        case ACTOR_EN_GELDB:
+            return SEKIRO_IMPACT_RED_BLOOD;
+
+        case ACTOR_EN_IK:
+            return SEKIRO_IMPACT_METAL;
+
+        case ACTOR_EN_SKB:
+            return SEKIRO_IMPACT_GREEN_BLOOD;
+
+        case ACTOR_EN_TITE:
+            return SEKIRO_IMPACT_GREEN_BLOOD;
+
+        case ACTOR_EN_AM:
+            return SEKIRO_IMPACT_METAL;
+
+        case ACTOR_EN_KAREBABA:
+            return SEKIRO_IMPACT_GREEN_BLOOD;
+
+        default:
+            return SEKIRO_IMPACT_RED_BLOOD;
+    }
+}
+
 void Sekiro_SpawnDeathblowImpact(PlayState* play, Actor* target, SekiroImpactType impactType) {
     Vec3f impactPos;
 
@@ -450,6 +531,14 @@ void Sekiro_SpawnDeathblowImpact(PlayState* play, Actor* target, SekiroImpactTyp
                 play,
                 &impactPos,
                 &target->projectedPos
+            );
+            break;
+
+        case SEKIRO_IMPACT_RED_HITMARK:
+            EffectSsHitMark_SpawnFixedScale(
+                play,
+                EFFECT_HITMARK_RED,
+                &impactPos
             );
             break;
 
@@ -555,7 +644,10 @@ SekiroDeathblowFinisher Sekiro_GetRandomDeathblowFinisher(void) {
 
 s32 Sekiro_UpdateDeathblow(PlayState* play, Player* player) {
     Actor* target = player->brokenTarget;
+    SekiroImpactType impactType;
     s32 animFinished;
+
+    impactType = Sekiro_GetDeathblowImpactType(target);
 
     player->skelAnime.playSpeed = 1.5f;
 
@@ -571,7 +663,7 @@ s32 Sekiro_UpdateDeathblow(PlayState* play, Player* player) {
         Sekiro_SpawnDeathblowImpact(
             play,
             target,
-            SEKIRO_IMPACT_RED_BLOOD
+            impactType
         );
     }
 
@@ -585,7 +677,7 @@ s32 Sekiro_UpdateDeathblow(PlayState* play, Player* player) {
         Sekiro_SpawnDeathblowImpact(
             play,
             target,
-            SEKIRO_IMPACT_RED_BLOOD
+            impactType
         );
     }
 

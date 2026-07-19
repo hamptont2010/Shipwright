@@ -31,6 +31,13 @@ void EnKarebaba_Dead(EnKarebaba* this, PlayState* play);
 void EnKarebaba_Regrow(EnKarebaba* this, PlayState* play);
 void EnKarebaba_Upright(EnKarebaba* this, PlayState* play);
 
+void EnKarebaba_SetupPostureBroken(EnKarebaba* this);
+void EnKarebaba_PostureBroken(EnKarebaba* this, PlayState* play);
+void EnKarebaba_ApplyPostureBreak(EnKarebaba* this);
+void EnKarebaba_SetupDying(EnKarebaba* this);
+
+void EnKarebaba_SetupUpright(EnKarebaba* this);
+
 const ActorInit En_Karebaba_InitVars = {
     ACTOR_EN_KAREBABA,
     ACTORCAT_ENEMY,
@@ -139,6 +146,60 @@ void EnKarebaba_SetupGrow(EnKarebaba* this) {
     this->actor.shape.rot.x = -0x4000;
     this->actionFunc = EnKarebaba_Grow;
     this->actor.world.pos.y = this->actor.home.pos.y + 14.0f;
+}
+
+void EnKarebaba_SetupPostureBroken(EnKarebaba* this) {
+    /*
+     * Six-second posture-break window at approximately 20 FPS.
+     */
+    this->actor.params = 120;
+
+    /*
+     * Clear the current collision results, but preserve AT_ON so
+     * Karebaba can attack normally again after recovering.
+     */
+    this->headCollider.base.atFlags &=
+        ~(AT_HIT | AT_BOUNCED);
+
+    this->bodyCollider.base.acFlags &= ~AC_HIT;
+
+    /*
+     * Freeze the current upright animation.
+     */
+    this->skelAnime.playSpeed = 0.0f;
+
+    /*
+     * Keep the body vulnerable for the deathblow.
+     */
+    this->bodyCollider.base.colType = COLTYPE_HIT6;
+    this->bodyCollider.base.acFlags &= ~AC_HARD;
+
+    this->actionFunc = EnKarebaba_PostureBroken;
+}
+
+void EnKarebaba_PostureBroken(
+    EnKarebaba* this,
+    PlayState* play
+) {
+    /*
+     * Process the real native sword hit from the deathblow.
+     */
+    if (this->bodyCollider.base.acFlags & AC_HIT) {
+        this->bodyCollider.base.acFlags &= ~AC_HIT;
+
+        EnKarebaba_SetupDying(this);
+        Enemy_StartFinishingBlow(play, &this->actor);
+        return;
+    }
+
+    if (this->actor.params > 0) {
+        this->actor.params--;
+    }
+
+    if (this->actor.params == 0) {
+        this->skelAnime.playSpeed = 4.0f;
+        EnKarebaba_SetupUpright(this);
+    }
 }
 
 void EnKarebaba_SetupIdle(EnKarebaba* this) {
@@ -429,9 +490,22 @@ void EnKarebaba_Update(Actor* thisx, PlayState* play) {
             }
         }
         if (this->actionFunc != EnKarebaba_Dying && this->actionFunc != EnKarebaba_DeadItemDrop) {
-            if (this->actionFunc != EnKarebaba_Regrow && this->actionFunc != EnKarebaba_Grow) {
-                CollisionCheck_SetAT(play, &play->colChkCtx, &this->headCollider.base);
-                CollisionCheck_SetAC(play, &play->colChkCtx, &this->bodyCollider.base);
+            if (this->actionFunc != EnKarebaba_Regrow &&
+                this->actionFunc != EnKarebaba_Grow) {
+
+                if (this->actionFunc != EnKarebaba_PostureBroken) {
+                    CollisionCheck_SetAT(
+                        play,
+                        &play->colChkCtx,
+                        &this->headCollider.base
+                    );
+                }
+
+                CollisionCheck_SetAC(
+                    play,
+                    &play->colChkCtx,
+                    &this->bodyCollider.base
+                );
             }
             CollisionCheck_SetOC(play, &play->colChkCtx, &this->headCollider.base);
             Actor_SetFocus(&this->actor, (this->actor.scale.x * 10.0f) / 0.01f);
@@ -441,6 +515,14 @@ void EnKarebaba_Update(Actor* thisx, PlayState* play) {
             this->actor.focus.pos.z = this->actor.home.pos.z;
         }
     }
+}
+
+void EnKarebaba_ApplyPostureBreak(EnKarebaba* this) {
+    if (this->actor.colChkInfo.health == 0) {
+        return;
+    }
+
+    EnKarebaba_SetupPostureBroken(this);
 }
 
 void EnKarebaba_DrawBaseShadow(EnKarebaba* this, PlayState* play) {

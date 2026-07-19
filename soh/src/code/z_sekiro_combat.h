@@ -46,6 +46,7 @@ typedef enum {
     SEKIRO_IMPACT_GREEN_BLOOD,
     SEKIRO_IMPACT_BLUE_BLOOD,
     SEKIRO_IMPACT_METAL,
+    SEKIRO_IMPACT_RED_HITMARK,
 } SekiroImpactType;
 
 void Sekiro_SpawnDeathblowImpact(PlayState* play, Actor* target, SekiroImpactType impactType);

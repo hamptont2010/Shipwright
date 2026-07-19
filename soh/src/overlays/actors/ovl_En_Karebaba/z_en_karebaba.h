@@ -19,4 +19,6 @@ typedef struct EnKarebaba {
     /* 0x0244 */ ColliderCylinder bodyCollider;
 } EnKarebaba; // size = 0x0290
 
+void EnKarebaba_ApplyPostureBreak(EnKarebaba* this);
+
 #endif
