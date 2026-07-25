@@ -2991,28 +2991,42 @@ void CollisionCheck_SetInfoGetDamageTable(CollisionCheckInfo* info, s32 index, C
 /**
  * Apply AC damage effect
  */
-void CollisionCheck_ApplyDamage(PlayState* play, CollisionCheckContext* colChkCtx, Collider* collider,
-                                ColliderInfo* info) {
+void CollisionCheck_ApplyDamage(
+    PlayState* play,
+    CollisionCheckContext* colChkCtx,
+    Collider* collider,
+    ColliderInfo* info
+) {
     DamageTable* tbl;
     f32 damage;
+    s32 isDeathblowHit = false;
 
-    if (collider->actor == NULL || !(collider->acFlags & AC_HIT)) {
+    if (collider->actor == NULL ||
+        !(collider->acFlags & AC_HIT)) {
         return;
     }
-    if (!(info->bumperFlags & BUMP_HIT) || info->bumperFlags & BUMP_NO_DAMAGE) {
+
+    if (!(info->bumperFlags & BUMP_HIT) ||
+        (info->bumperFlags & BUMP_NO_DAMAGE)) {
         return;
     }
 
     assert(info->acHitInfo != NULL);
+
     tbl = collider->actor->colChkInfo.damageTable;
+
     if (tbl == NULL) {
-        damage = (f32)info->acHitInfo->toucher.damage - info->bumper.defense;
+        damage =
+            (f32)info->acHitInfo->toucher.damage -
+            info->bumper.defense;
+
         if (damage < 0) {
             damage = 0;
         }
     } else {
         s32 i;
-        u32 flags = info->acHitInfo->toucher.dmgFlags;
+        u32 flags =
+            info->acHitInfo->toucher.dmgFlags;
 
         for (i = 0; i < 0x20; i++, flags >>= 1) {
             if (flags == 1) {
@@ -3021,7 +3035,9 @@ void CollisionCheck_ApplyDamage(PlayState* play, CollisionCheckContext* colChkCt
         }
 
         damage = tbl->table[i] & 0xF;
-        collider->actor->colChkInfo.damageEffect = tbl->table[i] >> 4 & 0xF;
+
+        collider->actor->colChkInfo.damageEffect =
+            (tbl->table[i] >> 4) & 0xF;
     }
 
     Player* player = GET_PLAYER(play);
@@ -3029,17 +3045,34 @@ void CollisionCheck_ApplyDamage(PlayState* play, CollisionCheckContext* colChkCt
     if ((player->brokenTarget == collider->actor) &&
         (info->acHitInfo->toucher.dmgFlags != 0)) {
         damage = collider->actor->colChkInfo.health;
-
-        player->brokenTarget = NULL;
-        player->brokenTimer = 0;
+        isDeathblowHit = true;
     }
 
-    if (!(collider->acFlags & AC_HARD)) {
+    if (isDeathblowHit ||
+        !(collider->acFlags & AC_HARD)) {
         collider->actor->colChkInfo.damage += damage;
+
+        /*
+        * Most enemies consume brokenTarget immediately when the
+        * deathblow damage is accepted.
+        *
+        * Peahat keeps it temporarily so its actor-specific weak-point
+        * handler can confirm the hit and start its native death state.
+        */
+        if (isDeathblowHit &&
+            (collider->actor->id != ACTOR_EN_PEEHAT)) {
+            player->brokenTarget = NULL;
+            player->brokenTimer = 0;
+        }
     }
 
-    if (CVarGetInteger(CVAR_ENHANCEMENT("IvanCoopModeEnabled"), 0)) {
-        collider->actor->colChkInfo.damage *= GET_PLAYER(play)->ivanDamageMultiplier;
+
+    if (CVarGetInteger(
+            CVAR_ENHANCEMENT("IvanCoopModeEnabled"),
+            0
+        )) {
+        collider->actor->colChkInfo.damage *=
+            GET_PLAYER(play)->ivanDamageMultiplier;
     }
 }
 

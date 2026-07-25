@@ -11,6 +11,7 @@
 #include "overlays/actors/ovl_En_Am/z_en_am.h"
 #include "overlays/effects/ovl_Effect_Ss_HitMark/z_eff_ss_hitmark.h"
 #include "overlays/actors/ovl_En_Karebaba/z_en_karebaba.h"
+#include "overlays/actors/ovl_En_Peehat/z_en_peehat.h"
 
 s32 Sekiro_UpdateDeathblowFlipTest(PlayState* play, Player* player);
 
@@ -125,6 +126,8 @@ s32 Sekiro_IsSupportedEnemy(Actor* enemy) {
         case ACTOR_EN_TITE:
         case ACTOR_EN_AM:
             return true;
+        case ACTOR_EN_PEEHAT:
+            return enemy->params <= 0;
 
         default:
             return false;
@@ -166,6 +169,9 @@ u8 Sekiro_GetPostureThreshold(Actor* enemy) {
 
         case ACTOR_EN_KAREBABA:
             return 2;
+
+        case ACTOR_EN_PEEHAT:
+            return 3;
 
         default:
             return 3;
@@ -370,6 +376,10 @@ void Sekiro_ApplyPostureBreak(Actor* enemy, PlayState* play) {
             EnKarebaba_ApplyPostureBreak((EnKarebaba*)enemy);
             break;
 
+        case ACTOR_EN_PEEHAT:
+            EnPeehat_ApplyPostureBreak((EnPeehat*)enemy);
+            break;
+
         default:
             Actor_SetColorFilter(enemy, 0x4000, 255, 0, 60);
             break;
@@ -497,6 +507,9 @@ SekiroImpactType Sekiro_GetDeathblowImpactType(Actor* target) {
             return SEKIRO_IMPACT_METAL;
 
         case ACTOR_EN_KAREBABA:
+            return SEKIRO_IMPACT_GREEN_BLOOD;
+
+        case ACTOR_EN_PEEHAT:
             return SEKIRO_IMPACT_GREEN_BLOOD;
 
         default:
@@ -683,14 +696,26 @@ s32 Sekiro_UpdateDeathblow(PlayState* play, Player* player) {
 
     // Hand off into the genuine native stab
     if (LinkAnimation_OnFrame(&player->skelAnime, 46.0f)) {
+        SekiroDeathblowFinisher finisher = sCinematicFinisher;
+
+        /*
+         * Peahat always receives the original native stab.
+         * It has the reach needed to connect with the raised
+         * underside weak point.
+         */
+        if ((target != NULL) &&
+            (target->id == ACTOR_EN_PEEHAT)) {
+            finisher = SEKIRO_FINISHER_STAB;
+        }
+
         sDeathblowActive = false;
 
         Sekiro_StartDeathblowFinisher(
             play,
             player,
-            sCinematicFinisher
+            finisher
         );
-    
+
         return true;
     }
 
@@ -1232,6 +1257,73 @@ s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
     backDistSq =
         SQ(player->actor.world.pos.x - backPos.x) +
         SQ(player->actor.world.pos.z - backPos.z);
+
+    /*
+     * PEAHAT SPECIAL CASE:
+     *
+     * Peahat's size and posture-broken tilt make the aerial
+     * deathblow entries unreliable. Snap Link to whichever normal
+     * anchor is closest and always use the cinematic entry.
+     *
+     * The cinematic will later hand off into the original stab.
+     */
+    if (target->id == ACTOR_EN_PEEHAT) {
+        Vec3f peahatStabPos;
+        f32 peahatStabDistance = 70.0f;
+        s16 peahatAnchorYaw;
+
+        /*
+        * The previous position was 90 degrees from Peahat's forward
+        * direction. Move another 90 degrees clockwise, placing Link
+        * directly behind Peahat relative to its original facing.
+        */
+        peahatAnchorYaw = target->shape.rot.y + 0x8000;
+
+        peahatStabPos = target->world.pos;
+        peahatStabPos.x +=
+            Math_SinS(peahatAnchorYaw) * peahatStabDistance;
+        peahatStabPos.z +=
+            Math_CosS(peahatAnchorYaw) * peahatStabDistance;
+
+        player->actor.world.pos.x = peahatStabPos.x;
+        player->actor.world.pos.z = peahatStabPos.z;
+
+        player->actor.world.pos.x = peahatStabPos.x;
+        player->actor.world.pos.z = peahatStabPos.z;
+
+        /*
+         * Face Link directly toward Peahat.
+         */
+        yawToTarget =
+            Math_Vec3f_Yaw(
+                &player->actor.world.pos,
+                &target->world.pos
+            );
+
+        player->actor.shape.rot.y = yawToTarget;
+        player->actor.world.rot.y = yawToTarget;
+        player->yaw = yawToTarget;
+
+        /*
+         * Remove existing movement before beginning the cinematic.
+         */
+        player->linearVelocity = 0.0f;
+        player->actor.speedXZ = 0.0f;
+        player->actor.velocity.x = 0.0f;
+        player->actor.velocity.y = 0.0f;
+        player->actor.velocity.z = 0.0f;
+
+        osSyncPrintf(
+            "SEKIRO: Peahat entry=forced cinematic\n"
+        );
+
+        Sekiro_StartDeathblowCinematic(
+            play,
+            player
+        );
+
+        return 1;
+    }
 
     /*
      * FRONT CASE:

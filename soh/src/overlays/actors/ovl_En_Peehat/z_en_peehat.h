@@ -44,4 +44,6 @@ typedef struct EnPeehat {
     /* 0x03AC */ ColliderQuad colQuad;
 } EnPeehat; // size = 0x042C
 
+void EnPeehat_ApplyPostureBreak(EnPeehat* peehat);
+
 #endif

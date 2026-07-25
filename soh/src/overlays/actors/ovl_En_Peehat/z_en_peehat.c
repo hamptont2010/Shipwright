@@ -44,6 +44,8 @@ void EnPeehat_Adult_StateDie(EnPeehat* this, PlayState* play);
 void EnPeehat_SetStateExplode(EnPeehat* this);
 void EnPeehat_StateExplode(EnPeehat* this, PlayState* play);
 
+void EnPeehat_ApplyPostureBreak(EnPeehat* this);
+
 const ActorInit En_Peehat_InitVars = {
     ACTOR_EN_PEEHAT,
     ACTORCAT_ENEMY,
@@ -790,9 +792,26 @@ void EnPeehat_SetStateBoomerangStunned(EnPeehat* this) {
     EnPeehat_SetupAction(this, EnPeehat_StateBoomerangStunned);
 }
 
+void EnPeehat_ApplyPostureBreak(EnPeehat* this) {
+    if (this->actor.params > 0 || this->actor.colChkInfo.health == 0) {
+        return;
+    }
+
+    this->colQuad.base.atFlags &= ~(AT_HIT | AT_BOUNCED);
+    this->colQuad.base.acFlags &= ~(AC_HIT | AC_BOUNCED);
+    this->colJntSph.base.acFlags &= ~AC_HIT;
+    this->colCylinder.base.acFlags &= ~AC_HIT;
+
+    this->actor.speedXZ = 0.0f;
+    this->actor.velocity.y = 0.0f;
+    this->bladeRotVel = 0;
+
+    EnPeehat_SetStateBoomerangStunned(this);
+}
+
 void EnPeehat_StateBoomerangStunned(EnPeehat* this, PlayState* play) {
     Math_SmoothStepToF(&this->actor.speedXZ, 0.0f, 1.0f, 1.0f, 0.0f);
-    Math_SmoothStepToF(&this->actor.world.pos.y, this->actor.floorHeight, 1.0f, 8.0f, 0.0f);
+    Math_SmoothStepToF(&this->actor.world.pos.y, this->actor.floorHeight + 40.0f, 1.0f, 8.0f, 0.0f);
     if (this->actor.colorFilterTimer == 0) {
         EnPeehat_Ground_SetStateRise(this);
     }
@@ -888,6 +907,31 @@ void EnPeehat_StateExplode(EnPeehat* this, PlayState* play) {
 }
 
 void EnPeehat_Adult_CollisionCheck(EnPeehat* this, PlayState* play) {
+
+    Player* player = GET_PLAYER(play);
+
+    /*
+    * A Sekiro deathblow that reaches Peahat's exposed weak point
+    * should bypass the normal armored-bounce priority and enter
+    * Peahat's native death sequence directly.
+    */
+    if ((player->brokenTarget == &this->actor) &&
+        (this->colJntSph.base.acFlags & AC_HIT)) {
+
+        this->colJntSph.base.acFlags &= ~AC_HIT;
+        this->colCylinder.base.acFlags &= ~(AC_HIT | AC_BOUNCED);
+        this->colQuad.base.acFlags &= ~(AC_HIT | AC_BOUNCED);
+
+        this->actor.colChkInfo.health = 0;
+
+        player->brokenTarget = NULL;
+        player->brokenTimer = 0;
+
+        EnPeehat_Adult_SetStateDie(this);
+        return;
+    }
+
+
     if ((this->colCylinder.base.acFlags & AC_BOUNCED) || (this->colQuad.base.acFlags & AC_BOUNCED)) {
         this->colQuad.base.acFlags &= ~AC_BOUNCED;
         this->colCylinder.base.acFlags &= ~AC_BOUNCED;
@@ -956,8 +1000,11 @@ void EnPeehat_Update(Actor* thisx, PlayState* play) {
         thisx->focus.pos.x = this->colJntSph.elements[0].dim.worldSphere.center.x;
         thisx->focus.pos.y = this->colJntSph.elements[0].dim.worldSphere.center.y;
         thisx->focus.pos.z = this->colJntSph.elements[0].dim.worldSphere.center.z;
+
         if (this->state == PEAHAT_STATE_SEEK_PLAYER) {
             Math_SmoothStepToS(&thisx->shape.rot.x, 6000, 1, 300, 0);
+        } else if (this->state == PEAHAT_STATE_STUNNED) {
+            Math_SmoothStepToS(&thisx->shape.rot.x, 0x2000, 1, 0x400, 0);
         } else {
             Math_SmoothStepToS(&thisx->shape.rot.x, 0, 1, 300, 0);
         }
