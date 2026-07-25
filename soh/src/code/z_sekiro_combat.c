@@ -12,16 +12,32 @@
 #include "overlays/effects/ovl_Effect_Ss_HitMark/z_eff_ss_hitmark.h"
 #include "overlays/actors/ovl_En_Karebaba/z_en_karebaba.h"
 #include "overlays/actors/ovl_En_Peehat/z_en_peehat.h"
+#include "overlays/actors/ovl_En_Goma/z_en_goma.h"
 
 s32 Sekiro_UpdateDeathblowFlipTest(PlayState* play, Player* player);
 
 static s32 sDeathblowActive = false;
+static s32 sDeathblowFinisherArmed = false;
+static Actor* sDeathblowFinisherTarget = NULL;
 
 static SekiroDeathblowFinisher sCinematicFinisher =
     SEKIRO_FINISHER_STAB;
 
 s32 Sekiro_IsDeathblowActive(void) {
     return sDeathblowActive;
+}
+
+s32 Sekiro_IsDeathblowFinisherHit(Actor* target) {
+    return sDeathblowFinisherArmed &&
+           (target != NULL) &&
+           (sDeathblowFinisherTarget == target);
+}
+
+void Sekiro_ConsumeDeathblowFinisherHit(Actor* target) {
+    if (sDeathblowFinisherTarget == target) {
+        sDeathblowFinisherArmed = false;
+        sDeathblowFinisherTarget = NULL;
+    }
 }
 
 void Sekiro_PlayerAction_DeathblowFlip(
@@ -44,6 +60,36 @@ void Player_FinishSekiroFlip(
         PLAYER_CSACTION_97
     );
 }
+
+void Sekiro_LogPostureState(
+    s16 actorId,
+    s32 count,
+    s32 threshold,
+    s32 supported,
+    s32 gomaType
+);
+
+void Sekiro_LogPostureBreak(
+    Actor* target,
+    Actor* focus,
+    s32 timer,
+    s32 hostile,
+    s32 valid
+);
+
+void Sekiro_LogTryStart(
+    Actor* target,
+    Actor* focus,
+    s32 timer,
+    s32 hostile,
+    s32 valid
+);
+
+void Sekiro_LogTryStartReject(
+    s32 reason,
+    Actor* target,
+    Actor* focus
+);
 
 void Player_PlaySekiroRoll(Player* player, PlayState* play);
 
@@ -128,6 +174,8 @@ s32 Sekiro_IsSupportedEnemy(Actor* enemy) {
             return true;
         case ACTOR_EN_PEEHAT:
             return enemy->params <= 0;
+        case ACTOR_EN_GOMA:
+            return ((EnGoma*)enemy)->gomaType == ENGOMA_NORMAL;
 
         default:
             return false;
@@ -172,6 +220,9 @@ u8 Sekiro_GetPostureThreshold(Actor* enemy) {
 
         case ACTOR_EN_PEEHAT:
             return 3;
+
+        case ACTOR_EN_GOMA:
+            return 2;
 
         default:
             return 3;
@@ -380,6 +431,13 @@ void Sekiro_ApplyPostureBreak(Actor* enemy, PlayState* play) {
             EnPeehat_ApplyPostureBreak((EnPeehat*)enemy);
             break;
 
+        case ACTOR_EN_GOMA:
+            EnGoma_ApplyPostureBreak(
+                (EnGoma*)enemy,
+                play
+            );
+            break;
+
         default:
             Actor_SetColorFilter(enemy, 0x4000, 255, 0, 60);
             break;
@@ -435,20 +493,26 @@ void Sekiro_RegisterDeflect(
         player->deflectCount = 1;
     }
 
-    osSyncPrintf(
-        "SEKIRO: attacker=%d posture=%d/%d\n",
+    Sekiro_LogPostureState(
         attacker->id,
         player->deflectCount,
-        postureThreshold
+        postureThreshold,
+        Sekiro_IsSupportedEnemy(attacker),
+        attacker->id == ACTOR_EN_GOMA
+            ? ((EnGoma*)attacker)->gomaType
+            : -1
     );
 
     if (player->deflectCount >= postureThreshold) {
         player->brokenTarget = attacker;
         player->brokenTimer = 60;
 
-        osSyncPrintf(
-            "SEKIRO: posture break attacker=%d\n",
-            attacker->id
+        Sekiro_LogPostureBreak(
+            attacker,
+            player->focusActor,
+            player->brokenTimer,
+            Player_CheckHostileLockOn(player),
+            attacker->update != NULL
         );
 
         Sekiro_ApplyPostureBreak(attacker, play);
@@ -512,6 +576,9 @@ SekiroImpactType Sekiro_GetDeathblowImpactType(Actor* target) {
         case ACTOR_EN_PEEHAT:
             return SEKIRO_IMPACT_GREEN_BLOOD;
 
+        case ACTOR_EN_GOMA:
+            return SEKIRO_IMPACT_GREEN_BLOOD;
+
         default:
             return SEKIRO_IMPACT_RED_BLOOD;
     }
@@ -567,6 +634,14 @@ void Sekiro_StartDeathblowFinisher(
     SekiroDeathblowFinisher finisher
 ) {
     s32 meleeAnimation;
+
+    /*
+     * From this point forward, the next real sword collision against
+     * brokenTarget is the genuine deathblow hit.
+     */
+    sDeathblowFinisherTarget = player->brokenTarget;
+    sDeathblowFinisherArmed =
+        sDeathblowFinisherTarget != NULL;
 
     switch (finisher) {
         case SEKIRO_FINISHER_SPIN:
@@ -1218,16 +1293,55 @@ s32 Sekiro_TryStartDeathblow(PlayState* play, Player* player) {
     s16 yawToTarget;
     s32 flipPathClear;
 
-    // There is no valid posture-broken target.
+    Sekiro_LogTryStart(
+        target,
+        player->focusActor,
+        player->brokenTimer,
+        Player_CheckHostileLockOn(player),
+        (target != NULL) && (target->update != NULL)
+    );
+
+    /*
+    * There is no valid posture-broken target.
+    */
     if ((target == NULL) || (target->update == NULL)) {
-        sDeathblowActive = false;
-        Player_SetCsAction(play, NULL, PLAYER_CSACTION_7);
+        Sekiro_LogTryStartReject(
+            1,
+            target,
+            player->focusActor
+        );
+
+        /*
+        * This was only an ordinary attack attempt.
+        * Do not alter Link's action or lock-on state.
+        */
         return 0;
     }
 
-    // The broken enemy must be Link's current hostile lock-on target.
-    if ((player->focusActor != target) ||
-        !Player_CheckHostileLockOn(player)) {
+    /*
+    * Link is no longer locked onto the posture-broken enemy.
+    */
+    if (player->focusActor != target) {
+        Sekiro_LogTryStartReject(
+            2,
+            target,
+            player->focusActor
+        );
+
+        return 0;
+    }
+
+    /*
+    * Link has a focus actor, but the game no longer considers it
+    * a hostile lock-on target.
+    */
+    if (!Player_CheckHostileLockOn(player)) {
+        Sekiro_LogTryStartReject(
+            3,
+            target,
+            player->focusActor
+        );
+
         return 0;
     }
 

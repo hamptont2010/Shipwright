@@ -80,6 +80,70 @@ extern "C" void Sekiro_LogIkState(
     );
 }
 
+extern "C" void Sekiro_LogPostureState(
+    s16 actorId,
+    s32 count,
+    s32 threshold,
+    s32 supported,
+    s32 gomaType
+) {
+    SPDLOG_INFO(
+        "SEKIRO_POSTURE actor={} count={}/{} supported={} gomaType={}",
+        actorId,
+        count,
+        threshold,
+        supported,
+        gomaType
+    );
+}
+
+extern "C" void Sekiro_LogPostureBreak(
+    Actor* target,
+    Actor* focus,
+    s32 timer,
+    s32 hostile,
+    s32 valid
+) {
+    SPDLOG_INFO(
+        "SEKIRO_POSTURE_BREAK target={} focus={} timer={} hostile={} valid={}",
+        static_cast<void*>(target),
+        static_cast<void*>(focus),
+        timer,
+        hostile,
+        valid
+    );
+}
+
+extern "C" void Sekiro_LogTryStart(
+    Actor* target,
+    Actor* focus,
+    s32 timer,
+    s32 hostile,
+    s32 valid
+) {
+    SPDLOG_INFO(
+        "SEKIRO_TRY_START target={} focus={} timer={} hostile={} valid={}",
+        static_cast<void*>(target),
+        static_cast<void*>(focus),
+        timer,
+        hostile,
+        valid
+    );
+}
+
+extern "C" void Sekiro_LogTryStartReject(
+    s32 reason,
+    Actor* target,
+    Actor* focus
+) {
+    SPDLOG_INFO(
+        "SEKIRO_TRY_REJECT reason={} target={} focus={}",
+        reason,
+        static_cast<void*>(target),
+        static_cast<void*>(focus)
+    );
+}
+
 namespace SohGui {
 extern std::shared_ptr<SohMenu> mSohMenu;
 }
@@ -725,7 +789,8 @@ static SekiroTestEnemyEntry sSekiroTestEnemies[] = {
     { ACTOR_EN_SKB,  -1, "Stalchild" },
     { ACTOR_EN_TITE, 0, "Tektite" },
     { ACTOR_EN_AM, 1, "Armos" },
-    { ACTOR_EN_FZ, 0, "Frezzard' "}
+    { ACTOR_EN_FZ, 0, "Frezzard' "},
+    { ACTOR_EN_GOMA, 7, "Gohma Larva" },
 };
 
 static const SekiroTestEnemyEntry sSekiroInitialEnemy = {

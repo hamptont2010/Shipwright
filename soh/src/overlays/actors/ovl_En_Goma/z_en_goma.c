@@ -569,6 +569,47 @@ void EnGoma_SetupStunned(EnGoma* this, PlayState* play) {
     }
 }
 
+void EnGoma_ApplyPostureBreak(
+    EnGoma* this,
+    PlayState* play
+) {
+    /*
+     * Only the hatched larva is supported.
+     * Eggs, debris, and boss limbs share this actor.
+     */
+    if ((this->gomaType != ENGOMA_NORMAL) ||
+        ((s8)this->actor.colChkInfo.health <= 0)) {
+        return;
+    }
+
+    /*
+     * Clear transient attack and damage flags from the deflected hit.
+     */
+    this->colCyl1.base.atFlags &= ~(AT_HIT | AT_BOUNCED);
+    this->colCyl2.base.acFlags &= ~(AC_HIT | AC_BOUNCED);
+
+    /*
+     * Stop the jump/chase motion and any shield knockback.
+     */
+    this->actor.speedXZ = 0.0f;
+    this->actor.velocity.x = 0.0f;
+    this->actor.velocity.y = 0.0f;
+    this->actor.velocity.z = 0.0f;
+
+    this->shieldKnockbackVel.x = 0.0f;
+    this->shieldKnockbackVel.y = 0.0f;
+    this->shieldKnockbackVel.z = 0.0f;
+
+    /*
+     * Prevent an old damage cooldown from interfering with the
+     * eventual deathblow hit.
+     */
+    this->hurtTimer = 0;
+    this->invincibilityTimer = 0;
+
+    EnGoma_SetupStunned(this, play);
+}
+
 void EnGoma_Stunned(EnGoma* this, PlayState* play) {
     Actor_SetColorFilter(&this->actor, 0, 180, 0, 2);
     this->visualState = 2;
@@ -628,9 +669,51 @@ void EnGoma_UpdateHit(EnGoma* this, PlayState* play) {
             this->actor.velocity.y = 0.0f;
         }
 
-        if ((this->colCyl2.base.acFlags & AC_HIT) && (s8)this->actor.colChkInfo.health > 0) {
+        if ((this->colCyl2.base.acFlags & AC_HIT) &&
+            (s8)this->actor.colChkInfo.health > 0) {
             acHitInfo = this->colCyl2.info.acHitInfo;
             this->colCyl2.base.acFlags &= ~AC_HIT;
+
+            /*
+            * Sekiro deathblow:
+            *
+            * Gohma Larva bypasses Actor_ApplyDamage() and subtracts sword
+            * damage manually, so confirm the genuine finisher hit here and
+            * enter its native lethal hurt/death sequence.
+            */
+            if (Sekiro_IsDeathblowFinisherHit(&this->actor) &&
+                (this->gomaType == ENGOMA_NORMAL) &&
+                (acHitInfo != NULL) &&
+                (acHitInfo->toucher.dmgFlags != 0)) {
+
+                this->colCyl1.base.atFlags &=
+                    ~(AT_HIT | AT_BOUNCED);
+
+                this->colCyl2.base.acFlags &=
+                    ~(AC_HIT | AC_BOUNCED);
+
+                this->actor.colChkInfo.health = 0;
+
+                Sekiro_ConsumeDeathblowFinisherHit(
+                    &this->actor
+                );
+
+                player->brokenTarget = NULL;
+                player->brokenTimer = 0;
+
+                EnGoma_SetupHurt(this, play);
+
+                Actor_SetColorFilter(
+                    &this->actor,
+                    0x4000,
+                    255,
+                    0,
+                    5
+                );
+
+                this->hurtTimer = 13;
+                return;
+            }
 
             if (this->gomaType == ENGOMA_NORMAL) {
                 u32 dmgFlags = acHitInfo->toucher.dmgFlags;
@@ -749,9 +832,30 @@ void EnGoma_Update(Actor* thisx, PlayState* play) {
         if (this->invincibilityTimer == 0) {
             Collider_UpdateCylinder(&this->actor, &this->colCyl1);
             Collider_UpdateCylinder(&this->actor, &this->colCyl2);
-            CollisionCheck_SetOC(play, &play->colChkCtx, &this->colCyl1.base);
-            CollisionCheck_SetAC(play, &play->colChkCtx, &this->colCyl2.base);
-            CollisionCheck_SetAT(play, &play->colChkCtx, &this->colCyl1.base);
+
+            CollisionCheck_SetOC(
+                play,
+                &play->colChkCtx,
+                &this->colCyl1.base
+            );
+
+            CollisionCheck_SetAC(
+                play,
+                &play->colChkCtx,
+                &this->colCyl2.base
+            );
+
+            /*
+            * Do not register Gohma Larva's contact attack while it is
+            * posture-broken in its native stunned state.
+            */
+            if (this->actionFunc != EnGoma_Stunned) {
+                CollisionCheck_SetAT(
+                    play,
+                    &play->colChkCtx,
+                    &this->colCyl1.base
+                );
+            }
         }
     }
 }

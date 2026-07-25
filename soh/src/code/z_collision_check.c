@@ -3042,7 +3042,7 @@ void CollisionCheck_ApplyDamage(
 
     Player* player = GET_PLAYER(play);
 
-    if ((player->brokenTarget == collider->actor) &&
+    if (Sekiro_IsDeathblowFinisherHit(collider->actor) &&
         (info->acHitInfo->toucher.dmgFlags != 0)) {
         damage = collider->actor->colChkInfo.health;
         isDeathblowHit = true;
@@ -3060,7 +3060,13 @@ void CollisionCheck_ApplyDamage(
         * handler can confirm the hit and start its native death state.
         */
         if (isDeathblowHit &&
-            (collider->actor->id != ACTOR_EN_PEEHAT)) {
+            (collider->actor->id != ACTOR_EN_PEEHAT) &&
+            (collider->actor->id != ACTOR_EN_GOMA)) {
+
+            Sekiro_ConsumeDeathblowFinisherHit(
+                collider->actor
+            );
+
             player->brokenTarget = NULL;
             player->brokenTimer = 0;
         }
