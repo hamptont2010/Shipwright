@@ -1137,10 +1137,45 @@ void EnDekubaba_UpdateDamage(EnDekubaba* this, PlayState* play) {
 void EnDekubaba_Update(Actor* thisx, PlayState* play) {
     s32 pad;
     EnDekubaba* this = (EnDekubaba*)thisx;
+    Player* player = GET_PLAYER(play);
 
     if (this->collider.base.atFlags & AT_HIT) {
-        this->collider.base.atFlags &= ~AT_HIT;
-        EnDekubaba_SetupRecover(this);
+        Vec3f deflectPos = player->actor.focus.pos;
+
+        /*
+         * Perfect deflect against the Baba's lunge.
+         */
+        if ((this->collider.base.at == &player->actor) &&
+            (player->deflectTimer > 0) &&
+            (player->stateFlags1 & PLAYER_STATE1_SHIELDING)) {
+
+            if (Sekiro_ConsumePerfectDeflect(
+                    player,
+                    play,
+                    &this->actor,
+                    &this->collider.base,
+                    &deflectPos
+                )) {
+
+                /*
+                 * If posture did not break, use the Baba's ordinary
+                 * post-attack recovery.
+                 *
+                 * On posture break, Sekiro_RegisterDeflect() will have
+                 * already changed actionFunc through
+                 * EnDekubaba_ApplyPostureBreak().
+                 */
+                if (this->actionFunc == EnDekubaba_Lunge) {
+                    EnDekubaba_SetupRecover(this);
+                }
+            }
+        } else {
+            /*
+             * Ordinary successful lunge contact.
+             */
+            this->collider.base.atFlags &= ~AT_HIT;
+            EnDekubaba_SetupRecover(this);
+        }
     }
 
     EnDekubaba_UpdateDamage(this, play);
@@ -1148,24 +1183,55 @@ void EnDekubaba_Update(Actor* thisx, PlayState* play) {
 
     if (this->actionFunc == EnDekubaba_PrunedSomersault) {
         Actor_MoveXZGravity(&this->actor);
-        Actor_UpdateBgCheckInfo(play, &this->actor, 10.0f, this->size * 15.0f, 10.0f, 5);
+
+        Actor_UpdateBgCheckInfo(
+            play,
+            &this->actor,
+            10.0f,
+            this->size * 15.0f,
+            10.0f,
+            5
+        );
     } else if (this->actionFunc != EnDekubaba_DeadStickDrop) {
-        Actor_UpdateBgCheckInfo(play, &this->actor, 0.0f, 0.0f, 0.0f, 4);
+        Actor_UpdateBgCheckInfo(
+            play,
+            &this->actor,
+            0.0f,
+            0.0f,
+            0.0f,
+            4
+        );
+
         if (this->boundFloor == NULL) {
             this->boundFloor = this->actor.floorPoly;
         }
     }
+
     if (this->actionFunc == EnDekubaba_Lunge) {
-        CollisionCheck_SetAT(play, &play->colChkCtx, &this->collider.base);
-        this->actor.flags |= ACTOR_FLAG_SFX_FOR_PLAYER_BODY_HIT;
+        CollisionCheck_SetAT(
+            play,
+            &play->colChkCtx,
+            &this->collider.base
+        );
+
+        this->actor.flags |=
+            ACTOR_FLAG_SFX_FOR_PLAYER_BODY_HIT;
     }
 
     if (this->collider.base.acFlags & AC_ON) {
-        CollisionCheck_SetAC(play, &play->colChkCtx, &this->collider.base);
+        CollisionCheck_SetAC(
+            play,
+            &play->colChkCtx,
+            &this->collider.base
+        );
     }
 
     if (this->actionFunc != EnDekubaba_DeadStickDrop) {
-        CollisionCheck_SetOC(play, &play->colChkCtx, &this->collider.base);
+        CollisionCheck_SetOC(
+            play,
+            &play->colChkCtx,
+            &this->collider.base
+        );
     }
 }
 

@@ -30,6 +30,8 @@ typedef enum PlayerStartMode {
     /* 16 */ PLAYER_START_MODE_MAX // Note: By default, this param has 4 bits allocated. The max value is 16.
 } PlayerStartMode;
 
+
+
 typedef enum PlayerSword {
     /* 0 */ PLAYER_SWORD_NONE,
     /* 1 */ PLAYER_SWORD_KOKIRI,
@@ -37,6 +39,8 @@ typedef enum PlayerSword {
     /* 3 */ PLAYER_SWORD_BIGGORON,
     /* 4 */ PLAYER_SWORD_MAX
 } PlayerSword;
+
+s32 Sekiro_GetSwordElement(void);
 
 typedef enum PlayerShield {
     /* 0x00 */ PLAYER_SHIELD_NONE,

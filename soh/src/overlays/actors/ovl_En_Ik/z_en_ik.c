@@ -982,52 +982,69 @@ void func_80A75FA0(Actor* thisx, PlayState* play) {
     u8 prevInvincibilityTimer;
 
     this->drawArmorFlag = this->armorStatusFlag;
+
     func_80A75C38(this, play);
-    if ((this->actor.params == 0) && (this->actor.colChkInfo.health <= 10)) {
+
+    if ((this->actor.params == 0) &&
+        (this->actor.colChkInfo.health <= 10)) {
         func_80A781CC(&this->actor, play);
         return;
     }
+
     this->actionFunc(this, play);
 
     if (this->axeCollider.base.atFlags & AT_BOUNCED) {
-        this->axeCollider.base.atFlags &= ~(AT_BOUNCED | AT_HIT);
+        this->axeCollider.base.atFlags &=
+            ~(AT_BOUNCED | AT_HIT);
+
     } else if (this->axeCollider.base.atFlags & AT_HIT) {
+        /*
+         * Preserve whether the axe hit before consuming the flag.
+         */
         this->axeCollider.base.atFlags &= ~AT_HIT;
 
         if (&player->actor == this->axeCollider.base.at) {
             if ((player->deflectTimer > 0) &&
-                (player->stateFlags1 & PLAYER_STATE1_SHIELDING)) {
+                (player->stateFlags1 &
+                 PLAYER_STATE1_SHIELDING)) {
 
-                Vec3f deflectPos = player->actor.focus.pos;
+                Vec3f deflectPos =
+                    player->actor.focus.pos;
 
+                /*
+                 * Iron-Knuckle-specific attack interruption.
+                 */
                 this->unk_2FE = 0;
 
-                player->cylinder.base.acFlags &= ~AC_HIT;
-                player->actor.colChkInfo.damage = 0;
-
-                Sekiro_RegisterDeflect(
+                /*
+                 * Shared perfect-deflect cleanup and posture
+                 * registration.
+                 */
+                Sekiro_ConsumePerfectDeflect(
                     player,
                     play,
                     &this->actor,
+                    &this->axeCollider.base,
                     &deflectPos
                 );
-
-                /*
-                * This perfect-deflect window has now been used.
-                */
-                player->deflectTimer = 0;
             } else {
                 /*
-                * Normal Iron Knuckle damage and knockback.
-                */
-                prevInvincibilityTimer = player->invincibilityTimer;
+                 * Normal Iron Knuckle damage and knockback.
+                 */
+                prevInvincibilityTimer =
+                    player->invincibilityTimer;
 
                 if (player->invincibilityTimer <= 0) {
                     if (player->invincibilityTimer < -39) {
                         player->invincibilityTimer = 0;
                     } else {
                         player->invincibilityTimer = 0;
-                        play->damagePlayer(play, -64);
+
+                        play->damagePlayer(
+                            play,
+                            -64
+                        );
+
                         this->unk_2FE = 0;
                     }
                 }
@@ -1040,20 +1057,43 @@ void func_80A75FA0(Actor* thisx, PlayState* play) {
                     8.0f
                 );
 
-                player->invincibilityTimer = prevInvincibilityTimer;
+                player->invincibilityTimer =
+                    prevInvincibilityTimer;
             }
         }
     }
+
     Actor_MoveXZGravity(&this->actor);
-    Actor_UpdateBgCheckInfo(play, &this->actor, 75.0f, 30.0f, 30.0f, 0x1D);
-    this->actor.focus.pos = this->actor.world.pos;
+
+    Actor_UpdateBgCheckInfo(
+        play,
+        &this->actor,
+        75.0f,
+        30.0f,
+        30.0f,
+        0x1D
+    );
+
+    this->actor.focus.pos =
+        this->actor.world.pos;
+
     this->actor.focus.pos.y += 45.0f;
-    Collider_UpdateCylinder(&this->actor, &this->bodyCollider);
-    CollisionCheck_SetOC(play, &play->colChkCtx, &this->bodyCollider.base);
+
+    Collider_UpdateCylinder(
+        &this->actor,
+        &this->bodyCollider
+    );
+
+    CollisionCheck_SetOC(
+        play,
+        &play->colChkCtx,
+        &this->bodyCollider.base
+    );
 
     if ((this->actor.colChkInfo.health > 0) &&
         ((this->actor.colorFilterTimer == 0) ||
-        (this->actionFunc == EnIk_SekiroAxeStuck)) &&
+         (this->actionFunc ==
+          EnIk_SekiroAxeStuck)) &&
         (this->unk_2F8 >= 2)) {
 
         CollisionCheck_SetAC(
@@ -1064,10 +1104,19 @@ void func_80A75FA0(Actor* thisx, PlayState* play) {
     }
 
     if (this->unk_2FE > 0) {
-        CollisionCheck_SetAT(play, &play->colChkCtx, &this->axeCollider.base);
+        CollisionCheck_SetAT(
+            play,
+            &play->colChkCtx,
+            &this->axeCollider.base
+        );
     }
+
     if (this->unk_2F8 == 9) {
-        CollisionCheck_SetAC(play, &play->colChkCtx, &this->shieldCollider.base);
+        CollisionCheck_SetAC(
+            play,
+            &play->colChkCtx,
+            &this->shieldCollider.base
+        );
     }
 }
 

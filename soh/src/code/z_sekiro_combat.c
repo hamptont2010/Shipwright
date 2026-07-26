@@ -524,6 +524,58 @@ void Sekiro_RegisterDeflect(
     }
 }
 
+s32 Sekiro_ConsumePerfectDeflect(
+    Player* player,
+    PlayState* play,
+    Actor* attacker,
+    Collider* attackCollider,
+    const Vec3f* deflectPos
+) {
+    if ((player == NULL) ||
+        (play == NULL) ||
+        (attacker == NULL) ||
+        (attackCollider == NULL)) {
+        return false;
+    }
+
+    if (player->deflectTimer == 0) {
+        return false;
+    }
+
+    /*
+     * Clear any remaining enemy-side attack result.
+     *
+     * Iron Knuckle already clears AT_HIT immediately before
+     * calling us, but keeping this here makes the helper safe
+     * for actors that have not cleared it yet.
+     */
+    attackCollider->atFlags &=
+        ~(AT_HIT | AT_BOUNCED);
+
+    /*
+     * Prevent the same collision from continuing through Link's
+     * normal damage path.
+     */
+    player->cylinder.base.acFlags &= ~AC_HIT;
+    player->actor.colChkInfo.damage = 0;
+
+    player->linearVelocity = 0.0f;
+
+    Sekiro_RegisterDeflect(
+        player,
+        play,
+        attacker,
+        deflectPos
+    );
+
+    /*
+     * Prevent one deflect window from consuming multiple hits.
+     */
+    player->deflectTimer = 0;
+
+    return true;
+}
+
 /**
  * Deathblow logic
  */

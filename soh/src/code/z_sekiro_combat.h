@@ -16,6 +16,14 @@ s32 Sekiro_IsDeathblowActive(void);
 s32 Sekiro_IsDeathblowFinisherHit(Actor* target);
 void Sekiro_ConsumeDeathblowFinisherHit(Actor* target);
 
+s32 Sekiro_ConsumePerfectDeflect(
+    Player* player,
+    PlayState* play,
+    Actor* attacker,
+    Collider* attackCollider,
+    const Vec3f* deflectPos
+);
+
 typedef enum {
     SEKIRO_FINISHER_STAB,
     SEKIRO_FINISHER_SPIN,

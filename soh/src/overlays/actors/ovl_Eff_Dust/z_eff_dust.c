@@ -322,22 +322,94 @@ void EffDust_DrawFunc_8099E784(Actor* thisx, PlayState* play2) {
     f32 aux;
     Player* player = GET_PLAYER(play);
 
+    /*
+     * Temporary elemental values:
+     *
+     * 0 = Fire
+     * 1 = Ice
+     */
+    s32 swordElement = Sekiro_GetSwordElement();
+
     OPEN_DISPS(gfxCtx);
 
     Gfx_SetupDL_25Opa(gfxCtx);
 
     gDPPipeSync(POLY_XLU_DISP++);
+
     if (this->actor.params & EFF_DUST_ELEMENTAL_FLAG) {
-        // Temporary Fire Sword colors
-        gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 255, 160, 40, 255);
-        gDPSetEnvColor(POLY_XLU_DISP++, 255, 20, 0, 0);
+        if (swordElement == 2) {
+            /*
+            * Ice Sword colors.
+            */
+            gDPSetPrimColor(
+                POLY_XLU_DISP++,
+                0,
+                0,
+                150,
+                230,
+                255,
+                255
+            );
+
+            gDPSetEnvColor(
+                POLY_XLU_DISP++,
+                20,
+                100,
+                255,
+                0
+            );
+        } else {
+            /*
+             * Fire Sword colors.
+             */
+            gDPSetPrimColor(
+                POLY_XLU_DISP++,
+                0,
+                0,
+                255,
+                160,
+                40,
+                255
+            );
+
+            gDPSetEnvColor(
+                POLY_XLU_DISP++,
+                255,
+                20,
+                0,
+                0
+            );
+        }
     } else {
-        gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 255, 255, 255, 255);
+        /*
+         * Original vanilla spin-charge colors.
+         */
+        gDPSetPrimColor(
+            POLY_XLU_DISP++,
+            0,
+            0,
+            255,
+            255,
+            255,
+            255
+        );
 
         if (player->unk_858 >= 0.85f) {
-            gDPSetEnvColor(POLY_XLU_DISP++, 255, 0, 0, 0);
+            gDPSetEnvColor(
+                POLY_XLU_DISP++,
+                255,
+                0,
+                0,
+                0
+            );
         } else {
-            gDPSetEnvColor(POLY_XLU_DISP++, 0, 0, 255, 0);
+            gDPSetEnvColor(
+                POLY_XLU_DISP++,
+                0,
+                0,
+                255,
+                0
+            );
         }
     }
 
@@ -347,33 +419,116 @@ void EffDust_DrawFunc_8099E784(Actor* thisx, PlayState* play2) {
     gSPSegment(POLY_XLU_DISP++, 0x08, sEmptyDL);
 
     for (i = 0; i < 64; i++) {
-        FrameInterpolation_RecordOpenChild("Dust 8099E784", i);
+        FrameInterpolation_RecordOpenChild(
+            "Dust 8099E784",
+            i
+        );
 
         if (*distanceTraveled < 1.0f) {
-            if (this->actor.params & EFF_DUST_ELEMENTAL_FLAG) {
-                gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 255, 160, 40, *distanceTraveled * 255);
+            if (this->actor.params &
+                EFF_DUST_ELEMENTAL_FLAG) {
+
+                if (swordElement == 2) {
+                    /*
+                    * Ice particle color with native fade.
+                    */
+                    gDPSetPrimColor(
+                        POLY_XLU_DISP++,
+                        0,
+                        0,
+                        150,
+                        230,
+                        255,
+                        *distanceTraveled * 255
+                    );
+                } else {
+                    /*
+                     * Fire particle color with native fade.
+                     */
+                    gDPSetPrimColor(
+                        POLY_XLU_DISP++,
+                        0,
+                        0,
+                        255,
+                        160,
+                        40,
+                        *distanceTraveled * 255
+                    );
+                }
             } else {
-                gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 255, 255, 255, *distanceTraveled * 255);
+                /*
+                 * Original vanilla particle color.
+                 */
+                gDPSetPrimColor(
+                    POLY_XLU_DISP++,
+                    0,
+                    0,
+                    255,
+                    255,
+                    255,
+                    *distanceTraveled * 255
+                );
             }
 
-            // Needed to match.
-            if (!this) {}
+            /*
+             * Needed to match.
+             */
+            if (!this) {
+            }
 
-            aux = 1.0f - (*distanceTraveled * *distanceTraveled);
+            aux =
+                1.0f -
+                (*distanceTraveled *
+                 *distanceTraveled);
 
-            Matrix_Mult(&player->mf_9E0, MTXMODE_NEW);
+            Matrix_Mult(
+                &player->mf_9E0,
+                MTXMODE_NEW
+            );
 
-            Matrix_Translate(initialPositions->x * ((this->dx * aux) + (1.0f - this->dx)),
-                             initialPositions->y * (1.0f - *distanceTraveled) + 320.0f,
-                             initialPositions->z * (1.0f - *distanceTraveled) + -20.0f, MTXMODE_APPLY);
+            Matrix_Translate(
+                initialPositions->x *
+                    ((this->dx * aux) +
+                     (1.0f - this->dx)),
+                initialPositions->y *
+                        (1.0f -
+                         *distanceTraveled) +
+                    320.0f,
+                initialPositions->z *
+                        (1.0f -
+                         *distanceTraveled) +
+                    -20.0f,
+                MTXMODE_APPLY
+            );
 
-            Matrix_Scale(*distanceTraveled * this->scalingFactor, *distanceTraveled * this->scalingFactor,
-                         *distanceTraveled * this->scalingFactor, MTXMODE_APPLY);
+            Matrix_Scale(
+                *distanceTraveled *
+                    this->scalingFactor,
+                *distanceTraveled *
+                    this->scalingFactor,
+                *distanceTraveled *
+                    this->scalingFactor,
+                MTXMODE_APPLY
+            );
 
-            Matrix_ReplaceRotation(&play->billboardMtxF);
+            Matrix_ReplaceRotation(
+                &play->billboardMtxF
+            );
 
-            gSPMatrix(POLY_XLU_DISP++, MATRIX_NEWMTX(gfxCtx), G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-            gSPDisplayList(POLY_XLU_DISP++, SEGMENTED_TO_VIRTUAL(gEffSparklesDL));
+            gSPMatrix(
+                POLY_XLU_DISP++,
+                MATRIX_NEWMTX(gfxCtx),
+                G_MTX_NOPUSH |
+                    G_MTX_LOAD |
+                    G_MTX_MODELVIEW
+            );
+
+            gSPDisplayList(
+                POLY_XLU_DISP++,
+                SEGMENTED_TO_VIRTUAL(
+                    gEffSparklesDL
+                )
+            );
         }
 
         FrameInterpolation_RecordCloseChild();

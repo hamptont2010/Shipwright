@@ -350,8 +350,20 @@ void Player_Action_CsAction(Player* this, PlayState* play);
 #pragma region[SoH]
 u8 gWalkSpeedToggle;
 
-static s32 sSekiroElementChargeTest = false;
+typedef enum SekiroSwordElement {
+    SEKIRO_ELEMENT_NONE = 0,
+    SEKIRO_ELEMENT_FIRE,
+    SEKIRO_ELEMENT_ICE
+} SekiroSwordElement;
+
+static SekiroSwordElement sSekiroSwordElement =
+    SEKIRO_ELEMENT_NONE;
 static Actor* sSekiroElementSparkleActor = NULL;
+static s32 sSekiroElementSparkleWeapon = 0;
+
+s32 Sekiro_GetSwordElement(void) {
+    return sSekiroSwordElement;
+}
 
 // Sets a flag according to which type of flag is specified in player->pendingFlag.flagType
 // and which flag is specified in player->pendingFlag.flagID.
@@ -4407,13 +4419,45 @@ s32 func_80837818(Player* this) {
     return sp18;
 }
 
-void func_80837918(Player* this, s32 quadIndex, u32 dmgFlags) {
-    this->meleeWeaponQuads[quadIndex].info.toucher.dmgFlags = dmgFlags;
+void func_80837918(
+    Player* this,
+    s32 quadIndex,
+    u32 dmgFlags
+) {
+    /*
+     * Replace every sword damage category with the currently
+     * selected elemental damage category.
+     */
+    if (dmgFlags & DMG_SWORD) {
+        switch (sSekiroSwordElement) {
+            case SEKIRO_ELEMENT_FIRE:
+                dmgFlags = DMG_ARROW_FIRE;
+                break;
 
-    if (dmgFlags == 2) {
-        this->meleeWeaponQuads[quadIndex].info.toucherFlags = TOUCH_ON | TOUCH_NEAREST | TOUCH_SFX_WOOD;
+            case SEKIRO_ELEMENT_ICE:
+                dmgFlags = DMG_ARROW_ICE;
+                break;
+
+            case SEKIRO_ELEMENT_NONE:
+            default:
+                break;
+        }
+    }
+
+    this->meleeWeaponQuads[quadIndex]
+        .info.toucher.dmgFlags = dmgFlags;
+
+    if (dmgFlags == DMG_DEKU_STICK) {
+        this->meleeWeaponQuads[quadIndex]
+            .info.toucherFlags =
+                TOUCH_ON |
+                TOUCH_NEAREST |
+                TOUCH_SFX_WOOD;
     } else {
-        this->meleeWeaponQuads[quadIndex].info.toucherFlags = TOUCH_ON | TOUCH_NEAREST;
+        this->meleeWeaponQuads[quadIndex]
+            .info.toucherFlags =
+                TOUCH_ON |
+                TOUCH_NEAREST;
     }
 }
 
@@ -12291,35 +12335,68 @@ void Player_Update(Actor* thisx, PlayState* play) {
         Player_UpdateCommon(this, play, &sp44);
 
         if (CHECK_BTN_ALL(sp44.press.button, BTN_DDOWN)) {
-            sSekiroElementChargeTest = !sSekiroElementChargeTest;
+            switch (sSekiroSwordElement) {
+                case SEKIRO_ELEMENT_NONE:
+                    sSekiroSwordElement = SEKIRO_ELEMENT_FIRE;
+                    break;
 
-            if (!sSekiroElementChargeTest) {
+                case SEKIRO_ELEMENT_FIRE:
+                    sSekiroSwordElement = SEKIRO_ELEMENT_ICE;
+                    break;
+
+                case SEKIRO_ELEMENT_ICE:
+                default:
+                    sSekiroSwordElement = SEKIRO_ELEMENT_NONE;
+                    break;
+            }
+        }
+
+        {
+            s32 meleeWeapon = Player_GetMeleeWeaponHeld(this);
+
+            if ((sSekiroSwordElement == SEKIRO_ELEMENT_NONE) ||
+                (meleeWeapon <= 0)) {
                 if ((sSekiroElementSparkleActor != NULL) &&
                     (sSekiroElementSparkleActor->update != NULL)) {
                     Actor_Kill(sSekiroElementSparkleActor);
                 }
 
                 sSekiroElementSparkleActor = NULL;
+                sSekiroElementSparkleWeapon = 0;
+            } else if ((sSekiroElementSparkleActor == NULL) ||
+                    (sSekiroElementSparkleActor->update == NULL) ||
+                    (sSekiroElementSparkleWeapon != meleeWeapon)) {
+
+                if ((sSekiroElementSparkleActor != NULL) &&
+                    (sSekiroElementSparkleActor->update != NULL)) {
+                    Actor_Kill(sSekiroElementSparkleActor);
+                }
+
+                sSekiroElementSparkleActor = Actor_Spawn(
+                    &play->actorCtx,
+                    play,
+                    ACTOR_EFF_DUST,
+                    this->actor.world.pos.x,
+                    this->actor.world.pos.y,
+                    this->actor.world.pos.z,
+                    0,
+                    0,
+                    0,
+                    (meleeWeapon + 1) |
+                        EFF_DUST_ELEMENTAL_FLAG
+                );
+
+                if (sSekiroElementSparkleActor != NULL) {
+                    sSekiroElementSparkleActor->parent =
+                        &this->actor;
+
+                    sSekiroElementSparkleWeapon =
+                        meleeWeapon;
+                } else {
+                    sSekiroElementSparkleWeapon = 0;
+                }
             }
         }
-
-        if (sSekiroElementChargeTest &&
-            ((sSekiroElementSparkleActor == NULL) ||
-            (sSekiroElementSparkleActor->update == NULL))) {
-            sSekiroElementSparkleActor =
-                Actor_Spawn(&play->actorCtx, play, ACTOR_EFF_DUST,
-                            this->actor.world.pos.x,
-                            this->actor.world.pos.y,
-                            this->actor.world.pos.z,
-                            0, 0, 0,
-                            (Player_GetMeleeWeaponHeld(this) + 1) |
-                                EFF_DUST_ELEMENTAL_FLAG);
-
-            if (sSekiroElementSparkleActor != NULL) {
-                sSekiroElementSparkleActor->parent = &this->actor;
-            }
-        }
-
     }
 
     MREG(52) = this->actor.world.pos.x;
