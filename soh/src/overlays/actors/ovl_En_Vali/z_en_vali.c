@@ -531,8 +531,23 @@ void EnVali_UpdateDamage(EnVali* this, PlayState* play) {
                     EnVali_SetupRetaliate(this);
                 }
             } else if (this->actor.colChkInfo.damageEffect == BARI_DMGEFF_FIRE) {
+                /*
+                * Disable Bari's electrical contact hitboxes before entering
+                * the elemental death reaction.
+                */
+                this->bodyCollider.base.atFlags &= ~(AT_ON | AT_HIT);
+                this->leftArmCollider.base.atFlags &= ~(AT_ON | AT_HIT);
+                this->rightArmCollider.base.atFlags &= ~(AT_ON | AT_HIT);
+
                 EnVali_SetupBurnt(this);
             } else if (this->actor.colChkInfo.damageEffect == BARI_DMGEFF_ICE) {
+                /*
+                * Frozen Bari cannot retaliate electrically.
+                */
+                this->bodyCollider.base.atFlags &= ~(AT_ON | AT_HIT);
+                this->leftArmCollider.base.atFlags &= ~(AT_ON | AT_HIT);
+                this->rightArmCollider.base.atFlags &= ~(AT_ON | AT_HIT);
+
                 EnVali_SetupFrozen(this);
             } else if (this->actor.colChkInfo.damageEffect == BARI_DMGEFF_SLINGSHOT) {
                 if (this->slingshotReactionTimer == 0) {
@@ -549,7 +564,26 @@ void EnVali_Update(Actor* thisx, PlayState* play) {
     s32 pad;
     EnVali* this = (EnVali*)thisx;
 
-    if ((this->bodyCollider.base.atFlags & AT_HIT) || (this->leftArmCollider.base.atFlags & AT_HIT) ||
+    s32 swordElement = Sekiro_GetSwordElement();
+
+    /*
+     * Normal swords conduct Bari's electricity.
+     * Fire and Ice blades neutralize that contact shock.
+     */
+    if ((swordElement == 1) || (swordElement == 2)) {
+        this->bodyCollider.info.bumper.effect = 0;
+    } else {
+        this->bodyCollider.info.bumper.effect = 1;
+    }
+
+    /*
+    * Process incoming damage first so Fire/Ice hits can neutralize
+    * Bari's electrical colliders before their AT_HIT flags are used.
+    */
+    EnVali_UpdateDamage(this, play);
+
+    if ((this->bodyCollider.base.atFlags & AT_HIT) ||
+        (this->leftArmCollider.base.atFlags & AT_HIT) ||
         (this->rightArmCollider.base.atFlags & AT_HIT)) {
         this->leftArmCollider.base.atFlags &= ~AT_HIT;
         this->rightArmCollider.base.atFlags &= ~AT_HIT;
@@ -557,7 +591,6 @@ void EnVali_Update(Actor* thisx, PlayState* play) {
         EnVali_SetupAttacked(this);
     }
 
-    EnVali_UpdateDamage(this, play);
     this->actionFunc(this, play);
 
     if ((this->actionFunc != EnVali_DivideAndDie) && (this->actionFunc != EnVali_Lurk)) {

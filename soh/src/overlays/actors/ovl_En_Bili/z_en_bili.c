@@ -583,9 +583,20 @@ void EnBili_UpdateDamage(EnBili* this, PlayState* play) {
                     EnBili_SetupBurnt(this);
                 }
             } else if (damageEffect == BIRI_DMGEFF_FIRE) {
+                /*
+                * Elemental sword hits should neutralize the electrical
+                * contact collider before it can shock Link.
+                */
+                this->collider.base.atFlags &= ~(AT_ON | AT_HIT);
+
                 EnBili_SetupBurnt(this);
                 this->timer = 2;
             } else if (damageEffect == BIRI_DMGEFF_ICE) {
+                /*
+                * Frozen Biri cannot retaliate electrically.
+                */
+                this->collider.base.atFlags &= ~(AT_ON | AT_HIT);
+
                 EnBili_SetupFrozen(this, play);
             } else if (damageEffect == BIRI_DMGEFF_SLINGSHOT) {
                 EnBili_SetupRecoil(this);
@@ -603,13 +614,28 @@ void EnBili_UpdateDamage(EnBili* this, PlayState* play) {
 void EnBili_Update(Actor* thisx, PlayState* play2) {
     PlayState* play = play2;
     EnBili* this = (EnBili*)thisx;
+    s32 swordElement = Sekiro_GetSwordElement();
+
+    /*
+    * Normal swords conduct Biri's electricity.
+    * Fire and Ice blades neutralize that contact shock.
+    */
+    if ((swordElement == 1) || (swordElement == 2)) {
+        this->collider.info.bumper.effect = 0;
+    } else {
+        this->collider.info.bumper.effect = 1;
+    }
+    /*
+    * Process incoming damage first so elemental hits can disable
+    * Biri's electrical attack collider before AT_HIT is consumed.
+    */
+    EnBili_UpdateDamage(this, play);
 
     if (this->collider.base.atFlags & AT_HIT) {
         this->collider.base.atFlags &= ~AT_HIT;
         EnBili_SetupDischargeLightning(this);
     }
 
-    EnBili_UpdateDamage(this, play);
     this->actionFunc(this, play);
 
     if (this->actionFunc != EnBili_Die) {

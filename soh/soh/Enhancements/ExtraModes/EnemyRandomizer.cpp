@@ -800,6 +800,8 @@ static SekiroTestEnemyEntry sSekiroTestEnemies[] = {
 
     { ACTOR_EN_BILI,      0,  "Biri" },
     { ACTOR_EN_VALI,     -1,  "Bari" },
+    { ACTOR_EN_RR,     0, "Like Like" },
+    { ACTOR_EN_TORCH2, 0, "Dark Link" },
 };
 
 static const SekiroTestEnemyEntry sSekiroInitialEnemy = {
