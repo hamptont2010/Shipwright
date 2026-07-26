@@ -781,16 +781,25 @@ typedef struct {
 } SekiroTestEnemyEntry;
 
 static SekiroTestEnemyEntry sSekiroTestEnemies[] = {
-    { ACTOR_EN_TEST,     2, "Stalfos" },
-    { ACTOR_EN_ZF,       0, "Lizalfos" },
-    { ACTOR_EN_WF,       0, "Wolfos" },
-    { ACTOR_EN_GELDB,    0, "Gerudo Fighter" },
-    { ACTOR_EN_DEKUBABA, 0, "Deku Baba" },
-    { ACTOR_EN_SKB,  -1, "Stalchild" },
-    { ACTOR_EN_TITE, 0, "Tektite" },
-    { ACTOR_EN_AM, 1, "Armos" },
-    { ACTOR_EN_FZ, 0, "Frezzard' "},
-    { ACTOR_EN_GOMA, 7, "Gohma Larva" },
+    { ACTOR_EN_TEST,      2,  "Stalfos" },
+    { ACTOR_EN_ZF,        0,  "Lizalfos" },
+    { ACTOR_EN_WF,        0,  "Wolfos" },
+    { ACTOR_EN_GELDB,     0,  "Gerudo Fighter" },
+    { ACTOR_EN_DEKUBABA,  0,  "Deku Baba" },
+    { ACTOR_EN_SKB,      -1,  "Stalchild" },
+    { ACTOR_EN_TITE,      0,  "Tektite" },
+    { ACTOR_EN_AM,        1,  "Armos" },
+    { ACTOR_EN_FZ,        0,  "Freezard" },
+    { ACTOR_EN_GOMA,      7,  "Gohma Larva" },
+    { ACTOR_EN_RD,        0,  "ReDead" },
+    { ACTOR_EN_RD,       -1,  "Gibdo" },
+    { ACTOR_EN_WALLMAS,   0,  "Wallmaster" },
+    { ACTOR_EN_FLOORMAS,  0,  "Floormaster" },
+    { ACTOR_EN_ST,        0,  "Skulltula" },
+    { ACTOR_EN_FIREFLY,   0,  "Keese" },
+
+    { ACTOR_EN_BILI,      0,  "Biri" },
+    { ACTOR_EN_VALI,     -1,  "Bari" },
 };
 
 static const SekiroTestEnemyEntry sSekiroInitialEnemy = {
@@ -831,7 +840,13 @@ static void Sekiro_SpawnSelectedTestEnemy(PlayState* play) {
         Actor_Kill(sSekiroTestEnemy);
     }
 
-        /*
+    /*
+     * Start with a copy of the preserved room spawn entry so that
+     * enemy-specific position changes do not alter the original.
+     */
+    ActorEntry spawnEntry = sSekiroTestSpawnEntry;
+
+    /*
      * Gerudo Fighter uses home.rot.z as a switch flag.
      * The preserved Deku Scrub spawn entry gives her switch 0,
      * so satisfy that native activation condition before spawning.
@@ -840,10 +855,34 @@ static void Sekiro_SpawnSelectedTestEnemy(PlayState* play) {
         Flags_SetSwitch(play, 0);
     }
 
+    /*
+     * Jellyfish enemies normally spawn above the room entry position.
+     * Raise them so they do not intersect the floor or immediately
+     * enter an unintended grounded state.
+     */
+    switch (testEnemy->actorId) {
+        case ACTOR_EN_BILI:
+            /*
+             * Biri: small jellyfish.
+             */
+            spawnEntry.pos.y += 75;
+            break;
+
+        case ACTOR_EN_VALI:
+            /*
+             * Bari: large jellyfish.
+             */
+            spawnEntry.pos.y += 300;
+            break;
+
+        default:
+            break;
+    }
+
     sSekiroTestEnemy = Sekiro_SpawnEnemyFromActorEntry(
         &play->actorCtx,
         play,
-        &sSekiroTestSpawnEntry,
+        &spawnEntry,
         testEnemy->actorId,
         testEnemy->params
     );

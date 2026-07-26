@@ -353,7 +353,8 @@ u8 gWalkSpeedToggle;
 typedef enum SekiroSwordElement {
     SEKIRO_ELEMENT_NONE = 0,
     SEKIRO_ELEMENT_FIRE,
-    SEKIRO_ELEMENT_ICE
+    SEKIRO_ELEMENT_ICE,
+    SEKIRO_ELEMENT_HOLY
 } SekiroSwordElement;
 
 static SekiroSwordElement sSekiroSwordElement =
@@ -4431,11 +4432,15 @@ void func_80837918(
     if (dmgFlags & DMG_SWORD) {
         switch (sSekiroSwordElement) {
             case SEKIRO_ELEMENT_FIRE:
-                dmgFlags = DMG_ARROW_FIRE;
+                dmgFlags |= DMG_ARROW_FIRE;
                 break;
 
             case SEKIRO_ELEMENT_ICE:
-                dmgFlags = DMG_ARROW_ICE;
+                dmgFlags |= DMG_ARROW_ICE;
+                break;
+
+            case SEKIRO_ELEMENT_HOLY:
+                dmgFlags |= DMG_MAGIC_LIGHT;
                 break;
 
             case SEKIRO_ELEMENT_NONE:
@@ -12345,6 +12350,10 @@ void Player_Update(Actor* thisx, PlayState* play) {
                     break;
 
                 case SEKIRO_ELEMENT_ICE:
+                    sSekiroSwordElement = SEKIRO_ELEMENT_HOLY;
+                    break;
+
+                case SEKIRO_ELEMENT_HOLY:
                 default:
                     sSekiroSwordElement = SEKIRO_ELEMENT_NONE;
                     break;

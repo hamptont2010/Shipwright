@@ -337,53 +337,81 @@ void EffDust_DrawFunc_8099E784(Actor* thisx, PlayState* play2) {
     gDPPipeSync(POLY_XLU_DISP++);
 
     if (this->actor.params & EFF_DUST_ELEMENTAL_FLAG) {
-        if (swordElement == 2) {
-            /*
-            * Ice Sword colors.
-            */
-            gDPSetPrimColor(
-                POLY_XLU_DISP++,
-                0,
-                0,
-                150,
-                230,
-                255,
-                255
-            );
+        switch (swordElement) {
+            case 2:
+                /*
+                * Ice Sword colors.
+                */
+                gDPSetPrimColor(
+                    POLY_XLU_DISP++,
+                    0,
+                    0,
+                    150,
+                    230,
+                    255,
+                    255
+                );
 
-            gDPSetEnvColor(
-                POLY_XLU_DISP++,
-                20,
-                100,
-                255,
-                0
-            );
-        } else {
-            /*
-             * Fire Sword colors.
-             */
-            gDPSetPrimColor(
-                POLY_XLU_DISP++,
-                0,
-                0,
-                255,
-                160,
-                40,
-                255
-            );
+                gDPSetEnvColor(
+                    POLY_XLU_DISP++,
+                    20,
+                    100,
+                    255,
+                    0
+                );
+                break;
 
-            gDPSetEnvColor(
-                POLY_XLU_DISP++,
-                255,
-                20,
-                0,
-                0
-            );
+            case 3:
+                /*
+                * Holy Sword colors.
+                */
+                gDPSetPrimColor(
+                    POLY_XLU_DISP++,
+                    0,
+                    0,
+                    255,
+                    240,
+                    120,
+                    255
+                );
+
+                gDPSetEnvColor(
+                    POLY_XLU_DISP++,
+                    255,
+                    190,
+                    20,
+                    0
+                );
+                break;
+
+            case 1:
+            default:
+                /*
+                * Fire Sword colors.
+                */
+                gDPSetPrimColor(
+                    POLY_XLU_DISP++,
+                    0,
+                    0,
+                    255,
+                    160,
+                    40,
+                    255
+                );
+
+                gDPSetEnvColor(
+                    POLY_XLU_DISP++,
+                    255,
+                    20,
+                    0,
+                    0
+                );
+                break;
         }
     } else {
         /*
-         * Original vanilla spin-charge colors.
-         */
+        * Original vanilla spin-charge colors.
+        */
         gDPSetPrimColor(
             POLY_XLU_DISP++,
             0,
@@ -425,40 +453,55 @@ void EffDust_DrawFunc_8099E784(Actor* thisx, PlayState* play2) {
         );
 
         if (*distanceTraveled < 1.0f) {
-            if (this->actor.params &
-                EFF_DUST_ELEMENTAL_FLAG) {
+            if (this->actor.params & EFF_DUST_ELEMENTAL_FLAG) {
+                switch (swordElement) {
+                    case 2:
+                        /*
+                        * Ice particle color.
+                        */
+                        gDPSetPrimColor(
+                            POLY_XLU_DISP++,
+                            0,
+                            0,
+                            150,
+                            230,
+                            255,
+                            *distanceTraveled * 255
+                        );
+                        break;
 
-                if (swordElement == 2) {
-                    /*
-                    * Ice particle color with native fade.
-                    */
-                    gDPSetPrimColor(
-                        POLY_XLU_DISP++,
-                        0,
-                        0,
-                        150,
-                        230,
-                        255,
-                        *distanceTraveled * 255
-                    );
-                } else {
-                    /*
-                     * Fire particle color with native fade.
-                     */
-                    gDPSetPrimColor(
-                        POLY_XLU_DISP++,
-                        0,
-                        0,
-                        255,
-                        160,
-                        40,
-                        *distanceTraveled * 255
-                    );
+                    case 3:
+                        /*
+                        * Holy particle color.
+                        */
+                        gDPSetPrimColor(
+                            POLY_XLU_DISP++,
+                            0,
+                            0,
+                            255,
+                            240,
+                            120,
+                            *distanceTraveled * 255
+                        );
+                        break;
+
+                    case 1:
+                    default:
+                        /*
+                        * Fire particle color.
+                        */
+                        gDPSetPrimColor(
+                            POLY_XLU_DISP++,
+                            0,
+                            0,
+                            255,
+                            160,
+                            40,
+                            *distanceTraveled * 255
+                        );
+                        break;
                 }
             } else {
-                /*
-                 * Original vanilla particle color.
-                 */
                 gDPSetPrimColor(
                     POLY_XLU_DISP++,
                     0,
