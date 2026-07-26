@@ -2084,14 +2084,20 @@ void EnZf_Update(Actor* thisx, PlayState* play) {
         }
 
         if ((D_80B4A1B0 != 0) && (D_80B4A1B4 != this->actor.params)) {
+            Actor* partner = NULL;
+
             EnZf_SetupSheatheSword(this, play);
             D_80B4A1B4 = this->actor.params;
             D_80B4A1B0 = 0;
 
-            if (this->actor.prev != NULL) {
-                ((EnZf*)this->actor.prev)->unk_3F4 = 90;
-            } else {
-                ((EnZf*)this->actor.next)->unk_3F4 = 90;
+            if ((this->actor.prev != NULL) && (this->actor.prev->id == ACTOR_EN_ZF)) {
+                partner = this->actor.prev;
+            } else if ((this->actor.next != NULL) && (this->actor.next->id == ACTOR_EN_ZF)) {
+                partner = this->actor.next;
+            }
+
+            if (partner != NULL) {
+                ((EnZf*)partner)->unk_3F4 = 90;
             }
         }
     }

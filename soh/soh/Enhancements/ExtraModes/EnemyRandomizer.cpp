@@ -781,27 +781,39 @@ typedef struct {
 } SekiroTestEnemyEntry;
 
 static SekiroTestEnemyEntry sSekiroTestEnemies[] = {
-    { ACTOR_EN_TEST,      2,  "Stalfos" },
-    { ACTOR_EN_ZF,        0,  "Lizalfos" },
-    { ACTOR_EN_WF,        0,  "Wolfos" },
-    { ACTOR_EN_GELDB,     0,  "Gerudo Fighter" },
-    { ACTOR_EN_DEKUBABA,  0,  "Deku Baba" },
-    { ACTOR_EN_SKB,      -1,  "Stalchild" },
-    { ACTOR_EN_TITE,      0,  "Tektite" },
-    { ACTOR_EN_AM,        1,  "Armos" },
-    { ACTOR_EN_FZ,        0,  "Freezard" },
-    { ACTOR_EN_GOMA,      7,  "Gohma Larva" },
-    { ACTOR_EN_RD,        0,  "ReDead" },
-    { ACTOR_EN_RD,       -1,  "Gibdo" },
-    { ACTOR_EN_WALLMAS,   0,  "Wallmaster" },
-    { ACTOR_EN_FLOORMAS,  0,  "Floormaster" },
-    { ACTOR_EN_ST,        0,  "Skulltula" },
-    { ACTOR_EN_FIREFLY,   0,  "Keese" },
+    // Humanoid / Armed Enemies
+    { ACTOR_EN_TEST,       2, "Stalfos" },
+    { ACTOR_EN_ZF,         0, "Lizalfos" },
+    { ACTOR_EN_WF,         0, "Wolfos" },
+    { ACTOR_EN_GELDB,      0, "Gerudo Fighter" },
+    { ACTOR_EN_TORCH2,     0, "Dark Link" },
+    { ACTOR_EN_MB,         0, "Moblin" },
 
-    { ACTOR_EN_BILI,      0,  "Biri" },
-    { ACTOR_EN_VALI,     -1,  "Bari" },
-    { ACTOR_EN_RR,     0, "Like Like" },
-    { ACTOR_EN_TORCH2, 0, "Dark Link" },
+    // Undead / Cursed Enemies
+    { ACTOR_EN_SKB,       -1, "Stalchild" },
+    { ACTOR_EN_RD,         0, "ReDead" },
+    { ACTOR_EN_RD,        -1, "Gibdo" },
+    { ACTOR_EN_POH,        0, "Poe" },
+    { ACTOR_EN_WALLMAS,    0, "Wallmaster" },
+    { ACTOR_EN_FLOORMAS,   0, "Floormaster" },
+    { ACTOR_EN_RR,         0, "Like Like" },
+
+    // Plants / Ground Creatures
+    { ACTOR_EN_DEKUBABA,   0, "Deku Baba" },
+    { ACTOR_EN_TITE,       0, "Tektite" },
+    { ACTOR_EN_ST,         0, "Skulltula" },
+    { ACTOR_EN_PEEHAT,     0, "Peahat" },
+    { ACTOR_EN_DODONGO,    0, "Dodongo" },
+    { ACTOR_EN_GOMA,       7, "Gohma Larva" },
+
+    // Flying / Elemental Enemies
+    { ACTOR_EN_FIREFLY,    0, "Keese" },
+    { ACTOR_EN_FZ,         0, "Freezard" },
+    { ACTOR_EN_BILI,       0, "Biri" },
+    { ACTOR_EN_VALI,      -1, "Bari" },
+
+    // Construct Enemies
+    { ACTOR_EN_AM,         1, "Armos" },
 };
 
 static const SekiroTestEnemyEntry sSekiroInitialEnemy = {
